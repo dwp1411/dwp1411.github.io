@@ -23,3 +23,32 @@ Corrected formula:
 ```excel
 =IFNA(FILTER('Overall Staff'!A:C, ISNUMBER(SEARCH("Abel Montoya", 'Overall Staff'!B:B))), "No Records Found")
 ```
+
+## Selective Column Filtering
+
+### Problem
+You want to pull data from a source sheet into columns A, B, and E of a destination sheet, but keep columns C and D empty for manual entry. A single array formula in A2 (like `={...}`) would overwrite C and D or cause a `#REF!` error.
+
+### Solution
+Use separate `FILTER` formulas in the top cell of each column you want to populate (e.g., A2, B2, E2). This leaves the intermediate columns (C, D) free for manual data.
+
+**Example Setup:**
+*   Source Sheet: `'Overall Staff'`
+*   Filter Criteria: Rows where Column B contains "Abel Montoya"
+
+**Formulas:**
+
+**Cell A2 (Name):**
+```excel
+=IFNA(FILTER('Overall Staff'!A:A, ISNUMBER(SEARCH("Abel Montoya", 'Overall Staff'!B:B))), "No Records Found")
+```
+
+**Cell B2 (Supervisor):**
+```excel
+=IFNA(FILTER('Overall Staff'!B:B, ISNUMBER(SEARCH("Abel Montoya", 'Overall Staff'!B:B))), "")
+```
+
+**Cell E2 (Temp Y/N):**
+```excel
+=IFNA(FILTER('Overall Staff'!E:E, ISNUMBER(SEARCH("Abel Montoya", 'Overall Staff'!B:B))), "")
+```
