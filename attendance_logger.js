@@ -59,12 +59,7 @@ const COL_HOURS_1 = 8;   // Column I (Updated/Hours)
 const COL_JOB_2 = 11;    // Column L (Avoiding button in K)
 const COL_HOURS_2 = 12;  // Column M
 
-// Target Column for FortHill Hours (AZ = Index 51)
-// A=0, Z=25, AA=26, AZ=51
-const TARGET_COL_FORTHILL = 52; // Wait, AZ is 52nd column, so index 51. Correct.
-// A=1, Z=26, AA=27... AZ=52. Index = 52 - 1 = 51.
-// Let's double check: 26 (A-Z) + 26 (AA-AZ) = 52. So AZ is column 52. 0-based index is 51.
-// However, getRange uses 1-based indexing for columns. So we need 52.
+// Target Column for FortHill Hours (AZ = Index 52 in 1-based getRange)
 const TARGET_COL_FORTHILL_INDEX = 52;
 
 // --- ENTRY POINTS ---
@@ -211,8 +206,11 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
       }
 
       // --- Process FortHill Hours (Column AZ) ---
+      // Requirement: "Making sure that the hours will be logged in the job function... and ALSO add them to column AZ"
       // If Building is "FortHill" (case-insensitive check), add total hours to Col AZ
       if (building.toLowerCase().includes('forthill') && totalRowHours > 0) {
+        // This is an ADDITIVE log. If they worked 7.5 hours at FortHill,
+        // 7.5 goes to their Job Column AND 7.5 goes to Column AZ.
         addUpdate(updates, targetRow, TARGET_COL_FORTHILL_INDEX, totalRowHours);
       }
     }
