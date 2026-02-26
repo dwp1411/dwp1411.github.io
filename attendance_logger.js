@@ -29,6 +29,8 @@
  *    - **Column I:** "Hours 1" (Overrides the default 7.5 hours for the main job).
  *    - **Column L:** "Job 2" (Select the second job function - Column L avoids the button in Column K).
  *    - **Column M:** "Hours 2" (Enter the hours for the second job).
+ * - **FortHill Hours:**
+ *    - If Column D (Building) is set to "FortHill", the total hours for that associate will also be logged in Column AZ of the Timecard.
  *
  * LOGIC:
  * - Finds the "Monday" of the current week.
@@ -36,6 +38,7 @@
  * - Opens the correct daily tab (e.g., "Monday_").
  * - Reads attendance from the active sheet.
  * - Logs hours (custom from Col I/M or default 7.5) for associates marked 'Y'.
+ * - Logs FortHill hours to Column AZ if applicable.
  * - **Smart Name Matching:** Attempts to match names even if they are formatted differently (e.g., "First Last" vs "Last First").
  */
 
@@ -50,10 +53,19 @@ const DEFAULT_HOURS = 7.5;
 // Column Indices (0-based: A=0, B=1, C=2...)
 const COL_NAME = 0;      // Column A
 const COL_JOB_1 = 2;     // Column C
+const COL_BUILDING = 3;  // Column D
 const COL_PRESENT = 7;   // Column H (Present for Work Y/N)
 const COL_HOURS_1 = 8;   // Column I (Updated/Hours)
 const COL_JOB_2 = 11;    // Column L (Avoiding button in K)
 const COL_HOURS_2 = 12;  // Column M
+
+// Target Column for FortHill Hours (AZ = Index 51)
+// A=0, Z=25, AA=26, AZ=51
+const TARGET_COL_FORTHILL = 52; // Wait, AZ is 52nd column, so index 51. Correct.
+// A=1, Z=26, AA=27... AZ=52. Index = 52 - 1 = 51.
+// Let's double check: 26 (A-Z) + 26 (AA-AZ) = 52. So AZ is column 52. 0-based index is 51.
+// However, getRange uses 1-based indexing for columns. So we need 52.
+const TARGET_COL_FORTHILL_INDEX = 52;
 
 // --- ENTRY POINTS ---
 
@@ -142,6 +154,7 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
     if (!row[COL_NAME]) continue;
 
     const rawName = String(row[COL_NAME]).trim();
+    const building = String(row[COL_BUILDING]).trim(); // Col D
     const present = String(row[COL_PRESENT]).trim().toUpperCase();
 
     if (present === 'Y') {
@@ -151,6 +164,8 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
         console.warn(`Name "${rawName}" from ${sourceSheet.getName()} not found in Timecard (tried reversing name too).`);
         continue;
       }
+
+      let totalRowHours = 0;
 
       // --- Process Job 1 ---
       const job1 = String(row[COL_JOB_1]).trim();
@@ -166,6 +181,7 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
           }
         }
         addUpdate(updates, targetRow, targetCol1, hours1);
+        totalRowHours += hours1;
       } else {
         console.warn(`Job 1 "${job1}" for "${rawName}" not found in Timecard headers.`);
       }
@@ -176,7 +192,7 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
         if (job2) {
           const targetCol2 = jobColMap.get(job2.toLowerCase());
           if (targetCol2) {
-            let hours2 = 0; // Default to 0 if not specified (safer than assuming 7.5 again)
+            let hours2 = 0;
             // Check custom hours for Job 2
             if (row.length > COL_HOURS_2) {
               const customHours2 = parseFloat(row[COL_HOURS_2]);
@@ -186,11 +202,18 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
             }
             if (hours2 > 0) {
               addUpdate(updates, targetRow, targetCol2, hours2);
+              totalRowHours += hours2;
             }
           } else {
              console.warn(`Job 2 "${job2}" for "${rawName}" not found in Timecard headers.`);
           }
         }
+      }
+
+      // --- Process FortHill Hours (Column AZ) ---
+      // If Building is "FortHill" (case-insensitive check), add total hours to Col AZ
+      if (building.toLowerCase().includes('forthill') && totalRowHours > 0) {
+        addUpdate(updates, targetRow, TARGET_COL_FORTHILL_INDEX, totalRowHours);
       }
     }
   }
