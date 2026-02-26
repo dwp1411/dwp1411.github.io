@@ -23,12 +23,21 @@
  * - The script will log 7.5 hours for everyone marked 'Y' on that specific sheet.
  * - A confirmation message will appear when done.
  *
+ * ADVANCED FEATURES:
+ * - **Split Shifts / Multiple Jobs:**
+ *    - Add a new column "Hours" (Column G) to your Supervisor sheet.
+ *    - If an associate works multiple jobs, duplicate their name on a new row.
+ *    - Select the first job for Row 1 and enter the hours (e.g., 4) in Col G.
+ *    - Select the second job for Row 2 and enter the hours (e.g., 3.5) in Col G.
+ *    - Ensure both rows are marked 'Y' for Present.
+ *    - The script will log the specific hours for each job. If Col G is blank, it defaults to 7.5.
+ *
  * LOGIC:
  * - Finds the "Monday" of the current week.
  * - Searches Drive for the correct Timecard file.
  * - Opens the correct daily tab (e.g., "Monday_").
  * - Reads attendance from the active sheet.
- * - Logs 7.5 hours for associates marked 'Y'.
+ * - Logs hours (custom from Col G or default 7.5) for associates marked 'Y'.
  * - **Smart Name Matching:** Attempts to match names even if they are formatted differently (e.g., "First Last" vs "Last First").
  */
 
@@ -39,7 +48,8 @@ const SUPERVISOR_TABS = [
   'Abel', 'Andrews', 'Casey', 'Chris', 'Dan', 'Dave',
   'Javier', 'Jesse', 'Mercedes', 'Ramon', 'Roger', 'Tombe'
 ];
-const HOURS_TO_LOG = 7.5;
+const DEFAULT_HOURS = 7.5;
+const HOURS_COLUMN_INDEX = 6; // Column G (0-based index)
 
 // --- ENTRY POINTS ---
 
@@ -112,10 +122,14 @@ function runAttendanceLog(specificSupervisorName) {
 
 /**
  * Reads a supervisor's sheet and updates the target timecard sheet.
+ * Uses an update map to aggregate hours before writing, supporting multiple rows for split shifts.
  */
 function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
   console.log(`Processing supervisor: ${sourceSheet.getName()}`);
   const data = sourceSheet.getDataRange().getValues();
+
+  // Map to aggregate updates: Key = "row_col", Value = Total Hours
+  const updates = new Map();
 
   // Iterate rows (assuming Row 1 is header)
   for (let i = 1; i < data.length; i++) {
@@ -132,12 +146,34 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
       const targetCol = jobColMap.get(jobFunction.toLowerCase());
 
       if (targetRow && targetCol) {
-        targetSheet.getRange(targetRow, targetCol).setValue(HOURS_TO_LOG);
+        // Determine Hours: Read from Col G (Index 6), otherwise use default
+        let hours = DEFAULT_HOURS;
+        if (row.length > HOURS_COLUMN_INDEX) {
+          const customHours = parseFloat(row[HOURS_COLUMN_INDEX]);
+          if (!isNaN(customHours) && customHours > 0) {
+            hours = customHours;
+          }
+        }
+
+        // Accumulate hours for this cell (handling potential multiple rows for same job)
+        const key = `${targetRow}_${targetCol}`;
+        const currentTotal = updates.get(key) || 0;
+        updates.set(key, currentTotal + hours);
+
       } else {
         if (!targetRow) console.warn(`Name "${rawName}" from ${sourceSheet.getName()} not found in Timecard (tried reversing name too).`);
         if (!targetCol) console.warn(`Job "${jobFunction}" from ${sourceSheet.getName()} not found in Timecard headers.`);
       }
     }
+  }
+
+  // Apply updates to the sheet
+  if (updates.size > 0) {
+    console.log(`Writing ${updates.size} updates to Timecard.`);
+    updates.forEach((hours, key) => {
+      const [r, c] = key.split('_').map(Number);
+      targetSheet.getRange(r, c).setValue(hours);
+    });
   }
 }
 
