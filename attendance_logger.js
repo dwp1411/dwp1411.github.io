@@ -29,6 +29,7 @@
  * - Opens the correct daily tab (e.g., "Monday_").
  * - Reads attendance from the active sheet.
  * - Logs 7.5 hours for associates marked 'Y'.
+ * - **Smart Name Matching:** Attempts to match names even if they are formatted differently (e.g., "First Last" vs "Last First").
  */
 
 // --- CONFIGURATION ---
@@ -122,22 +123,50 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
     // Safety check for empty rows
     if (!row[0]) continue;
 
-    const name = String(row[0]).trim(); // Col A
+    const rawName = String(row[0]).trim(); // Col A
     const jobFunction = String(row[2]).trim(); // Col C
     const present = String(row[5]).trim().toUpperCase(); // Col F
 
     if (present === 'Y') {
-      const targetRow = nameRowMap.get(name.toLowerCase());
+      const targetRow = findTargetRow(rawName, nameRowMap);
       const targetCol = jobColMap.get(jobFunction.toLowerCase());
 
       if (targetRow && targetCol) {
         targetSheet.getRange(targetRow, targetCol).setValue(HOURS_TO_LOG);
       } else {
-        if (!targetRow) console.warn(`Name "${name}" from ${sourceSheet.getName()} not found in Timecard.`);
+        if (!targetRow) console.warn(`Name "${rawName}" from ${sourceSheet.getName()} not found in Timecard (tried reversing name too).`);
         if (!targetCol) console.warn(`Job "${jobFunction}" from ${sourceSheet.getName()} not found in Timecard headers.`);
       }
     }
   }
+}
+
+/**
+ * Tries to find the row index for a given name, checking both:
+ * 1. Exact match (case-insensitive)
+ * 2. Reversed name match (Last First <-> First Last)
+ */
+function findTargetRow(rawName, nameRowMap) {
+  const name = rawName.toLowerCase();
+
+  // 1. Direct match
+  if (nameRowMap.has(name)) {
+    return nameRowMap.get(name);
+  }
+
+  // 2. Try swapping parts (e.g. "Mercedez Rodriguez" <-> "Rodriguez Mercedez")
+  // Split by space
+  const parts = name.split(/\s+/);
+  if (parts.length >= 2) {
+    // Reverse the parts and join them back
+    const reversedName = parts.reverse().join(' ');
+    if (nameRowMap.has(reversedName)) {
+      console.log(`Fuzzy match found: "${rawName}" matched as "${reversedName}"`);
+      return nameRowMap.get(reversedName);
+    }
+  }
+
+  return null;
 }
 
 /**
