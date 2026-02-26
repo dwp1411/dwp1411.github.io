@@ -26,16 +26,16 @@
  * ADVANCED FEATURES:
  * - **Split Shifts / Multiple Jobs (WITHOUT Duplicating Rows):**
  *    - Since you cannot duplicate rows, simply add new columns to the right of your existing data.
- *    - **Column G:** "Hours 1" (Overrides the default 7.5 hours for the main job).
- *    - **Column H:** "Job 2" (Select the second job function).
- *    - **Column I:** "Hours 2" (Enter the hours for the second job).
+ *    - **Column I:** "Hours 1" (Overrides the default 7.5 hours for the main job).
+ *    - **Column L:** "Job 2" (Select the second job function - Column L avoids the button in Column K).
+ *    - **Column M:** "Hours 2" (Enter the hours for the second job).
  *
  * LOGIC:
  * - Finds the "Monday" of the current week.
  * - Searches Drive for the correct Timecard file.
  * - Opens the correct daily tab (e.g., "Monday_").
  * - Reads attendance from the active sheet.
- * - Logs hours (custom from Col G/I or default 7.5) for associates marked 'Y'.
+ * - Logs hours (custom from Col I/M or default 7.5) for associates marked 'Y'.
  * - **Smart Name Matching:** Attempts to match names even if they are formatted differently (e.g., "First Last" vs "Last First").
  */
 
@@ -50,10 +50,10 @@ const DEFAULT_HOURS = 7.5;
 // Column Indices (0-based: A=0, B=1, C=2...)
 const COL_NAME = 0;      // Column A
 const COL_JOB_1 = 2;     // Column C
-const COL_PRESENT = 5;   // Column F
-const COL_HOURS_1 = 6;   // Column G (Custom hours for Job 1)
-const COL_JOB_2 = 7;     // Column H (Second Job)
-const COL_HOURS_2 = 8;   // Column I (Hours for Job 2)
+const COL_PRESENT = 7;   // Column H (Present for Work Y/N)
+const COL_HOURS_1 = 8;   // Column I (Updated/Hours)
+const COL_JOB_2 = 11;    // Column L (Avoiding button in K)
+const COL_HOURS_2 = 12;  // Column M
 
 // --- ENTRY POINTS ---
 
