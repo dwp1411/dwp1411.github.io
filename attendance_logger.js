@@ -10,18 +10,24 @@
  * 4. Save the project.
  *
  * SETUP:
- * 1. Run the `setupTriggers` function once to create a daily trigger (e.g., run every night or every hour) for the "Log All" backup.
- * 2. Run `onOpen` to add the custom menu "Attendance".
+ * 1. **Add a Button for Each Supervisor:**
+ *    - Go to each supervisor's tab.
+ *    - Insert > Drawing > New.
+ *    - Create a shape (e.g., a button labeled "Submit Attendance").
+ *    - Click "Save and Close".
+ *    - Click the three dots on the new drawing -> "Assign script".
+ *    - Enter `submitCurrentSheet` and click OK.
  *
  * HOW TO USE:
- * - **Menu Option:** Go to "Attendance" -> "Submit Current Sheet" while on a Supervisor's tab.
- * - **Button:** You can insert a drawing (Insert > Drawing) on each supervisor's sheet, style it as a button (e.g., "Submit Attendance"), and assign the script `submitCurrentSheet` to it.
+ * - When a supervisor is done logging their attendance for the day, they simply click the "Submit Attendance" button on their sheet.
+ * - The script will log 7.5 hours for everyone marked 'Y' on that specific sheet.
+ * - A confirmation message will appear when done.
  *
  * LOGIC:
  * - Finds the "Monday" of the current week.
  * - Searches Drive for the correct Timecard file.
  * - Opens the correct daily tab (e.g., "Monday_").
- * - Reads attendance from the source sheet(s).
+ * - Reads attendance from the active sheet.
  * - Logs 7.5 hours for associates marked 'Y'.
  */
 
@@ -37,7 +43,7 @@ const HOURS_TO_LOG = 7.5;
 // --- ENTRY POINTS ---
 
 /**
- * Triggered manually from the menu or a button on the active sheet.
+ * Triggered manually via a button on the active sheet.
  * Logs attendance ONLY for the currently active supervisor tab.
  */
 function submitCurrentSheet() {
@@ -61,24 +67,11 @@ function submitCurrentSheet() {
   }
 }
 
-/**
- * Main function to log attendance for ALL supervisors.
- * Can be run via a time-driven trigger as a backup.
- */
-function logAllAttendance() {
-  try {
-    runAttendanceLog(null); // null means process all
-    console.log('All attendance logged successfully.');
-  } catch (e) {
-    console.error('Error in logAllAttendance: ' + e.message);
-  }
-}
-
 // --- CORE LOGIC ---
 
 /**
  * Orchestrates the logging process.
- * @param {string|null} specificSupervisorName - The name of the specific tab to process, or null to process all.
+ * @param {string|null} specificSupervisorName - The name of the specific tab to process.
  */
 function runAttendanceLog(specificSupervisorName) {
   const today = new Date();
@@ -113,16 +106,6 @@ function runAttendanceLog(specificSupervisorName) {
     const sheet = sourceSS.getSheetByName(specificSupervisorName);
     if (!sheet) throw new Error(`Sheet "${specificSupervisorName}" not found.`);
     processSupervisor(sheet, targetSheet, nameRowMap, jobColMap);
-  } else {
-    // Process all supervisors
-    SUPERVISOR_TABS.forEach(supervisorName => {
-      const sheet = sourceSS.getSheetByName(supervisorName);
-      if (sheet) {
-        processSupervisor(sheet, targetSheet, nameRowMap, jobColMap);
-      } else {
-        console.warn(`Supervisor sheet "${supervisorName}" not found.`);
-      }
-    });
   }
 }
 
@@ -220,32 +203,4 @@ function formatDate(date) {
   const d = date.getDate();
   const y = date.getFullYear().toString().slice(-2);
   return `${m}/${d}/${y}`;
-}
-
-// --- UI & TRIGGERS ---
-
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('Attendance')
-    .addItem('Submit Current Sheet', 'submitCurrentSheet')
-    .addSeparator()
-    .addItem('Log All (Admin)', 'logAllAttendance')
-    .addToUi();
-}
-
-function setupTriggers() {
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'logAllAttendance' || trigger.getHandlerFunction() === 'logDailyAttendance') {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-
-  ScriptApp.newTrigger('logAllAttendance')
-    .timeBased()
-    .everyDays(1)
-    .atHour(23)
-    .create();
-
-  console.log('Daily trigger set for 11 PM.');
 }
