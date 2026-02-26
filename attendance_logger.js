@@ -10,16 +10,19 @@
  * 4. Save the project.
  *
  * SETUP:
- * 1. Run the `setupTriggers` function once to create a daily trigger (e.g., run every night or every hour).
- *    - Alternatively, you can set up triggers manually in the Triggers dashboard (clock icon on the left).
- * 2. Run `onOpen` to add the custom menu "Attendance" -> "Log Today's Hours" for manual execution.
+ * 1. Run the `setupTriggers` function once to create a daily trigger (e.g., run every night or every hour) for the "Log All" backup.
+ * 2. Run `onOpen` to add the custom menu "Attendance".
+ *
+ * HOW TO USE:
+ * - **Menu Option:** Go to "Attendance" -> "Submit Current Sheet" while on a Supervisor's tab.
+ * - **Button:** You can insert a drawing (Insert > Drawing) on each supervisor's sheet, style it as a button (e.g., "Submit Attendance"), and assign the script `submitCurrentSheet` to it.
  *
  * LOGIC:
- * - Finds the "Monday" of the current week based on the current date.
- * - Searches the destination Google Drive folder for a file named like "191 Week ... [Monday Date]".
- * - Opens the correct daily tab in that file (e.g., "Monday_", "Tuesday_", "Wednesday_", "Thursday_", "Friday_", "Saturday", "Sunday").
- * - Reads attendance data from each Supervisor's tab in the source sheet.
- * - If an associate is marked 'Y' in column F, it logs 7.5 hours to their row (Name in Col B) and job function column (Row 3).
+ * - Finds the "Monday" of the current week.
+ * - Searches Drive for the correct Timecard file.
+ * - Opens the correct daily tab (e.g., "Monday_").
+ * - Reads attendance from the source sheet(s).
+ * - Logs 7.5 hours for associates marked 'Y'.
  */
 
 // --- CONFIGURATION ---
@@ -31,23 +34,61 @@ const SUPERVISOR_TABS = [
 ];
 const HOURS_TO_LOG = 7.5;
 
-// --- MAIN FUNCTION ---
+// --- ENTRY POINTS ---
 
 /**
- * Main function to log attendance for the current day.
- * Can be run manually or via a time-driven trigger.
+ * Triggered manually from the menu or a button on the active sheet.
+ * Logs attendance ONLY for the currently active supervisor tab.
  */
-function logDailyAttendance() {
+function submitCurrentSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const sheetName = sheet.getName();
+
+  // Validate that we are on a supervisor sheet
+  if (!SUPERVISOR_TABS.includes(sheetName)) {
+    SpreadsheetApp.getUi().alert(`Current sheet "${sheetName}" is not in the list of Supervisor tabs. Please switch to a valid tab.`);
+    return;
+  }
+
+  // Run the logic for just this supervisor
+  try {
+    runAttendanceLog(sheetName);
+    SpreadsheetApp.getUi().alert(`Attendance for ${sheetName} has been successfully logged.`);
+  } catch (e) {
+    console.error(e);
+    SpreadsheetApp.getUi().alert(`Error: ${e.message}`);
+  }
+}
+
+/**
+ * Main function to log attendance for ALL supervisors.
+ * Can be run via a time-driven trigger as a backup.
+ */
+function logAllAttendance() {
+  try {
+    runAttendanceLog(null); // null means process all
+    console.log('All attendance logged successfully.');
+  } catch (e) {
+    console.error('Error in logAllAttendance: ' + e.message);
+  }
+}
+
+// --- CORE LOGIC ---
+
+/**
+ * Orchestrates the logging process.
+ * @param {string|null} specificSupervisorName - The name of the specific tab to process, or null to process all.
+ */
+function runAttendanceLog(specificSupervisorName) {
   const today = new Date();
-  console.log(`Starting attendance log for: ${today.toDateString()}`);
+  console.log(`Starting attendance log for: ${today.toDateString()} ` + (specificSupervisorName ? `[${specificSupervisorName}]` : '[ALL]'));
 
   // 1. Determine the correct Timecard File
   const mondayDate = getMonday(today);
   const file = findTimecardFile(mondayDate);
   if (!file) {
-    console.error('Could not find a matching Timecard file for this week.');
-    SpreadsheetApp.getUi().alert('Error: Could not find a matching Timecard file for the week starting ' + formatDate(mondayDate));
-    return;
+    throw new Error('Could not find a matching Timecard file for the week starting ' + formatDate(mondayDate));
   }
   console.log(`Found Timecard file: ${file.getName()}`);
 
@@ -57,22 +98,80 @@ function logDailyAttendance() {
   const targetSheet = timecardSS.getSheetByName(dayTabName);
 
   if (!targetSheet) {
-    console.error(`Could not find tab "${dayTabName}" in file "${file.getName()}".`);
-    return;
+    throw new Error(`Could not find tab "${dayTabName}" in file "${file.getName()}".`);
   }
   console.log(`Processing for day tab: ${dayTabName}`);
 
   // 3. Prepare Target Data Maps (Name -> Row, Job -> Col)
-  // We read the whole sheet data to build maps for fast lookups.
-  // Assuming Names are in Column B (Index 1) and Job Functions in Row 3 (Index 2).
+  const { nameRowMap, jobColMap } = buildTargetMaps(targetSheet);
+
+  // 4. Process Source Data
+  const sourceSS = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
+
+  if (specificSupervisorName) {
+    // Process single supervisor
+    const sheet = sourceSS.getSheetByName(specificSupervisorName);
+    if (!sheet) throw new Error(`Sheet "${specificSupervisorName}" not found.`);
+    processSupervisor(sheet, targetSheet, nameRowMap, jobColMap);
+  } else {
+    // Process all supervisors
+    SUPERVISOR_TABS.forEach(supervisorName => {
+      const sheet = sourceSS.getSheetByName(supervisorName);
+      if (sheet) {
+        processSupervisor(sheet, targetSheet, nameRowMap, jobColMap);
+      } else {
+        console.warn(`Supervisor sheet "${supervisorName}" not found.`);
+      }
+    });
+  }
+}
+
+/**
+ * Reads a supervisor's sheet and updates the target timecard sheet.
+ */
+function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
+  console.log(`Processing supervisor: ${sourceSheet.getName()}`);
+  const data = sourceSheet.getDataRange().getValues();
+
+  // Iterate rows (assuming Row 1 is header)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    // Safety check for empty rows
+    if (!row[0]) continue;
+
+    const name = String(row[0]).trim(); // Col A
+    const jobFunction = String(row[2]).trim(); // Col C
+    const present = String(row[5]).trim().toUpperCase(); // Col F
+
+    if (present === 'Y') {
+      const targetRow = nameRowMap.get(name.toLowerCase());
+      const targetCol = jobColMap.get(jobFunction.toLowerCase());
+
+      if (targetRow && targetCol) {
+        targetSheet.getRange(targetRow, targetCol).setValue(HOURS_TO_LOG);
+      } else {
+        if (!targetRow) console.warn(`Name "${name}" from ${sourceSheet.getName()} not found in Timecard.`);
+        if (!targetCol) console.warn(`Job "${jobFunction}" from ${sourceSheet.getName()} not found in Timecard headers.`);
+      }
+    }
+  }
+}
+
+/**
+ * Builds maps for Names (Row index) and Job Functions (Column index) from the target sheet.
+ */
+function buildTargetMaps(targetSheet) {
   const targetData = targetSheet.getDataRange().getValues();
 
   // Map Name -> Row Index
   const nameRowMap = new Map();
   for (let r = 0; r < targetData.length; r++) {
-    const name = String(targetData[r][1]).trim(); // Column B
-    if (name) {
-      nameRowMap.set(name.toLowerCase(), r + 1); // Store 1-based row index
+    // Column B is Index 1
+    if (targetData[r].length > 1) {
+      const name = String(targetData[r][1]).trim();
+      if (name) {
+        nameRowMap.set(name.toLowerCase(), r + 1); // 1-based row index
+      }
     }
   }
 
@@ -84,58 +183,17 @@ function logDailyAttendance() {
     for (let c = 0; c < headerRow.length; c++) {
       const job = String(headerRow[c]).trim();
       if (job) {
-        jobColMap.set(job.toLowerCase(), c + 1); // Store 1-based column index
+        jobColMap.set(job.toLowerCase(), c + 1); // 1-based column index
       }
     }
   }
 
-  // 4. Process Source Data
-  const sourceSS = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID);
-
-  SUPERVISOR_TABS.forEach(supervisorName => {
-    const sheet = sourceSS.getSheetByName(supervisorName);
-    if (!sheet) {
-      console.warn(`Supervisor sheet "${supervisorName}" not found.`);
-      return;
-    }
-
-    console.log(`Processing supervisor: ${supervisorName}`);
-    const data = sheet.getDataRange().getValues();
-
-    // Iterate rows (skip header if necessary, assuming Row 1 is header)
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const name = String(row[0]).trim(); // Col A
-      const jobFunction = String(row[2]).trim(); // Col C
-      const present = String(row[5]).trim().toUpperCase(); // Col F
-
-      if (present === 'Y') {
-        // Find target coordinates
-        const targetRow = nameRowMap.get(name.toLowerCase());
-        const targetCol = jobColMap.get(jobFunction.toLowerCase());
-
-        if (targetRow && targetCol) {
-          // Check if value already exists to avoid overwriting with same (optional)
-          // But here we just write.
-          targetSheet.getRange(targetRow, targetCol).setValue(HOURS_TO_LOG);
-        } else {
-          if (!targetRow) console.warn(`Name "${name}" from ${supervisorName} not found in Timecard.`);
-          if (!targetCol) console.warn(`Job "${jobFunction}" from ${supervisorName} not found in Timecard headers.`);
-        }
-      }
-    }
-  });
-
-  console.log('Attendance logging complete.');
+  return { nameRowMap, jobColMap };
 }
+
 
 // --- HELPER FUNCTIONS ---
 
-/**
- * Returns the Monday of the week for the given date.
- * If today is Sunday, it returns the previous Monday (standard business week logic).
- * Adjust if your week starts differently.
- */
 function getMonday(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -143,37 +201,20 @@ function getMonday(d) {
   return new Date(date.setDate(diff));
 }
 
-/**
- * Returns the tab name for the given date.
- * Logic: Monday_, Tuesday_, Wednesday_, Thursday_, Friday_, Saturday, Sunday.
- */
 function getDayTabName(date) {
   const days = ['Sunday', 'Monday_', 'Tuesday_', 'Wednesday_', 'Thursday_', 'Friday_', 'Saturday'];
   return days[date.getDay()];
 }
 
-/**
- * Searches the destination folder for a file containing "191 Week" and the formatted Monday date.
- */
 function findTimecardFile(mondayDate) {
   const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
-  const dateString = formatDate(mondayDate); // e.g., "2/23/26"
-
-  // Search for file with title containing "191 Week" and the date string
-  // Note: Date formats in titles can be tricky (e.g. 02/23 vs 2/23). We try exact match first.
+  const dateString = formatDate(mondayDate);
   const query = `title contains '191 Week' and title contains '${dateString}' and trashed = false`;
   const files = folder.searchFiles(query);
-
-  if (files.hasNext()) {
-    return files.next();
-  }
+  if (files.hasNext()) return files.next();
   return null;
 }
 
-/**
- * Formats date as M/d/yy (e.g., 2/23/26 or 10/5/25).
- * No leading zeros for single digits to match user example "2/23/26".
- */
 function formatDate(date) {
   const m = date.getMonth() + 1;
   const d = date.getDate();
@@ -186,21 +227,21 @@ function formatDate(date) {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Attendance')
-    .addItem('Log Today\'s Hours', 'logDailyAttendance')
+    .addItem('Submit Current Sheet', 'submitCurrentSheet')
+    .addSeparator()
+    .addItem('Log All (Admin)', 'logAllAttendance')
     .addToUi();
 }
 
 function setupTriggers() {
-  // Deletes existing triggers for this function to avoid duplicates
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'logDailyAttendance') {
+    if (trigger.getHandlerFunction() === 'logAllAttendance' || trigger.getHandlerFunction() === 'logDailyAttendance') {
       ScriptApp.deleteTrigger(trigger);
     }
   });
 
-  // Create a new daily trigger (e.g., at 11 PM)
-  ScriptApp.newTrigger('logDailyAttendance')
+  ScriptApp.newTrigger('logAllAttendance')
     .timeBased()
     .everyDays(1)
     .atHour(23)
