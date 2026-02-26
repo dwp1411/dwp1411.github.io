@@ -24,20 +24,18 @@
  * - A confirmation message will appear when done.
  *
  * ADVANCED FEATURES:
- * - **Split Shifts / Multiple Jobs:**
- *    - Add a new column "Hours" (Column G) to your Supervisor sheet.
- *    - If an associate works multiple jobs, duplicate their name on a new row.
- *    - Select the first job for Row 1 and enter the hours (e.g., 4) in Col G.
- *    - Select the second job for Row 2 and enter the hours (e.g., 3.5) in Col G.
- *    - Ensure both rows are marked 'Y' for Present.
- *    - The script will log the specific hours for each job. If Col G is blank, it defaults to 7.5.
+ * - **Split Shifts / Multiple Jobs (WITHOUT Duplicating Rows):**
+ *    - Since you cannot duplicate rows, simply add new columns to the right of your existing data.
+ *    - **Column G:** "Hours 1" (Overrides the default 7.5 hours for the main job).
+ *    - **Column H:** "Job 2" (Select the second job function).
+ *    - **Column I:** "Hours 2" (Enter the hours for the second job).
  *
  * LOGIC:
  * - Finds the "Monday" of the current week.
  * - Searches Drive for the correct Timecard file.
  * - Opens the correct daily tab (e.g., "Monday_").
  * - Reads attendance from the active sheet.
- * - Logs hours (custom from Col G or default 7.5) for associates marked 'Y'.
+ * - Logs hours (custom from Col G/I or default 7.5) for associates marked 'Y'.
  * - **Smart Name Matching:** Attempts to match names even if they are formatted differently (e.g., "First Last" vs "Last First").
  */
 
@@ -49,7 +47,13 @@ const SUPERVISOR_TABS = [
   'Javier', 'Jesse', 'Mercedes', 'Ramon', 'Roger', 'Tombe'
 ];
 const DEFAULT_HOURS = 7.5;
-const HOURS_COLUMN_INDEX = 6; // Column G (0-based index)
+// Column Indices (0-based: A=0, B=1, C=2...)
+const COL_NAME = 0;      // Column A
+const COL_JOB_1 = 2;     // Column C
+const COL_PRESENT = 5;   // Column F
+const COL_HOURS_1 = 6;   // Column G (Custom hours for Job 1)
+const COL_JOB_2 = 7;     // Column H (Second Job)
+const COL_HOURS_2 = 8;   // Column I (Hours for Job 2)
 
 // --- ENTRY POINTS ---
 
@@ -122,7 +126,7 @@ function runAttendanceLog(specificSupervisorName) {
 
 /**
  * Reads a supervisor's sheet and updates the target timecard sheet.
- * Uses an update map to aggregate hours before writing, supporting multiple rows for split shifts.
+ * Uses an update map to aggregate hours before writing, supporting multiple jobs per row.
  */
 function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
   console.log(`Processing supervisor: ${sourceSheet.getName()}`);
@@ -135,34 +139,58 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     // Safety check for empty rows
-    if (!row[0]) continue;
+    if (!row[COL_NAME]) continue;
 
-    const rawName = String(row[0]).trim(); // Col A
-    const jobFunction = String(row[2]).trim(); // Col C
-    const present = String(row[5]).trim().toUpperCase(); // Col F
+    const rawName = String(row[COL_NAME]).trim();
+    const present = String(row[COL_PRESENT]).trim().toUpperCase();
 
     if (present === 'Y') {
       const targetRow = findTargetRow(rawName, nameRowMap);
-      const targetCol = jobColMap.get(jobFunction.toLowerCase());
 
-      if (targetRow && targetCol) {
-        // Determine Hours: Read from Col G (Index 6), otherwise use default
-        let hours = DEFAULT_HOURS;
-        if (row.length > HOURS_COLUMN_INDEX) {
-          const customHours = parseFloat(row[HOURS_COLUMN_INDEX]);
+      if (!targetRow) {
+        console.warn(`Name "${rawName}" from ${sourceSheet.getName()} not found in Timecard (tried reversing name too).`);
+        continue;
+      }
+
+      // --- Process Job 1 ---
+      const job1 = String(row[COL_JOB_1]).trim();
+      const targetCol1 = jobColMap.get(job1.toLowerCase());
+
+      if (targetCol1) {
+        let hours1 = DEFAULT_HOURS;
+        // Check custom hours for Job 1
+        if (row.length > COL_HOURS_1) {
+          const customHours = parseFloat(row[COL_HOURS_1]);
           if (!isNaN(customHours) && customHours > 0) {
-            hours = customHours;
+            hours1 = customHours;
           }
         }
-
-        // Accumulate hours for this cell (handling potential multiple rows for same job)
-        const key = `${targetRow}_${targetCol}`;
-        const currentTotal = updates.get(key) || 0;
-        updates.set(key, currentTotal + hours);
-
+        addUpdate(updates, targetRow, targetCol1, hours1);
       } else {
-        if (!targetRow) console.warn(`Name "${rawName}" from ${sourceSheet.getName()} not found in Timecard (tried reversing name too).`);
-        if (!targetCol) console.warn(`Job "${jobFunction}" from ${sourceSheet.getName()} not found in Timecard headers.`);
+        console.warn(`Job 1 "${job1}" for "${rawName}" not found in Timecard headers.`);
+      }
+
+      // --- Process Job 2 (Optional) ---
+      if (row.length > COL_JOB_2) {
+        const job2 = String(row[COL_JOB_2]).trim();
+        if (job2) {
+          const targetCol2 = jobColMap.get(job2.toLowerCase());
+          if (targetCol2) {
+            let hours2 = 0; // Default to 0 if not specified (safer than assuming 7.5 again)
+            // Check custom hours for Job 2
+            if (row.length > COL_HOURS_2) {
+              const customHours2 = parseFloat(row[COL_HOURS_2]);
+              if (!isNaN(customHours2) && customHours2 > 0) {
+                hours2 = customHours2;
+              }
+            }
+            if (hours2 > 0) {
+              addUpdate(updates, targetRow, targetCol2, hours2);
+            }
+          } else {
+             console.warn(`Job 2 "${job2}" for "${rawName}" not found in Timecard headers.`);
+          }
+        }
       }
     }
   }
@@ -175,6 +203,15 @@ function processSupervisor(sourceSheet, targetSheet, nameRowMap, jobColMap) {
       targetSheet.getRange(r, c).setValue(hours);
     });
   }
+}
+
+/**
+ * Helper to add hours to the update map, summing if key exists.
+ */
+function addUpdate(updates, r, c, hours) {
+  const key = `${r}_${c}`;
+  const currentTotal = updates.get(key) || 0;
+  updates.set(key, currentTotal + hours);
 }
 
 /**
