@@ -79,12 +79,23 @@ function submitCurrentSheet() {
     return;
   }
 
+  // --- POP-UP MENU 1: PROCESSING INDICATOR ---
+  // This shows a small toast message at the bottom right to say it started.
+  ss.toast('Logging attendance... please wait.', 'Processing', 10);
+
   // Run the logic for just this supervisor
   try {
     runAttendanceLog(sheetName);
+
+    // --- POP-UP MENU 2: SUCCESS MESSAGE ---
+    // This is the main alert box that pops up when done.
     SpreadsheetApp.getUi().alert(`Attendance for ${sheetName} has been successfully logged.`);
+
   } catch (e) {
     console.error(e);
+
+    // --- POP-UP MENU 3: ERROR MESSAGE ---
+    // This alert box pops up if something goes wrong.
     SpreadsheetApp.getUi().alert(`Error: ${e.message}`);
   }
 }
