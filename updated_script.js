@@ -285,7 +285,7 @@ function CALCULATEBYCOLOR(inputRange, colorReferenceCell, calculationType) {
  * This is the "calculator" sheet.
  * @const {string}
  */
-const SOURCE_SPREADSHEET_ID = '1aHJQKkmx2ijrPmOeY_syCtu3d1U0j6iNuAGWG7JuvJk';
+const SOURCE_SPREADSHEET_ID = '1Pv6CRX-YvPKq4moiDPJ2U7imsj5Oix3vEnCjuncKI0w';
 
 /**
  * The name of the sheet within the source spreadsheet that contains the total.
@@ -344,7 +344,8 @@ function logDailyTotalCost() {
     }
 
     // --- Step 2: Find the correct column in the destination sheet ---
-    const destinationSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(DESTINATION_SHEET_NAME);
+    const destinationSpreadsheet = SpreadsheetApp.openById('1aHJQKkmx2ijrPmOeY_syCtu3d1U0j6iNuAGWG7JuvJk');
+    const destinationSheet = destinationSpreadsheet.getSheetByName(DESTINATION_SHEET_NAME);
     if (!destinationSheet) {
       throw new Error(`Sheet "${DESTINATION_SHEET_NAME}" not found in this spreadsheet.`);
     }
