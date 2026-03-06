@@ -89,12 +89,15 @@ function processParcelDetailsReport() {
   blob.setContentType(MimeType.MICROSOFT_EXCEL);
 
   const tempFileConfig = {
-    title: attachmentName.replace('.xls', ''),
+    name: attachmentName.replace('.xls', ''), // 'name' for Drive API v3
     mimeType: MimeType.GOOGLE_SHEETS
   };
 
-  const tempFile = Drive.Files.insert(tempFileConfig, blob);
+  const tempFile = Drive.Files.create(tempFileConfig, blob); // Drive.Files.create for Drive API v3
   const tempSpreadsheetId = tempFile.id;
+
+  // Wait for the new file to become available in Drive before attempting to open it
+  Utilities.sleep(3000);
 
   let dssCount = 0;
   let ssslCount = 0;
@@ -102,22 +105,25 @@ function processParcelDetailsReport() {
   try {
     const tempSpreadsheet = SpreadsheetApp.openById(tempSpreadsheetId);
 
-    // Process tabs "191" and "199"
-    const tabsToProcess = ["191", "199"];
+    // Process all sheets, looking for ones whose names *contain* "191" or "199"
+    const allSheets = tempSpreadsheet.getSheets();
 
-    tabsToProcess.forEach(tabName => {
-      const sheet = tempSpreadsheet.getSheetByName(tabName);
-      if (!sheet) {
-        // Tab not found, safely skip it
+    allSheets.forEach(sheet => {
+      const tabName = sheet.getName();
+      if (!tabName.includes("191") && !tabName.includes("199")) {
+        // Not a target tab, skip
         return;
       }
 
       const lastRow = sheet.getLastRow();
-      if (lastRow === 0) return; // Empty sheet
+      // If the sheet doesn't even have 6 rows (header + 1 data row), skip
+      if (lastRow < 6) return;
 
       // We need Column J (Index 10), so we fetch A to J.
       // Column J's array index is 9.
-      const data = sheet.getRange(1, 1, lastRow, 10).getValues();
+      // Since the header is on Row 5, data starts on Row 6.
+      // We fetch from row 6 down to the last row.
+      const data = sheet.getRange(6, 1, lastRow - 5, 10).getValues();
 
       for (let r = 0; r < data.length; r++) {
         const colJValue = data[r][9]; // Index 9 is Column J
