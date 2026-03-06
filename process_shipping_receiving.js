@@ -79,12 +79,18 @@ function processShippingReceivingReport() {
     if (lastRow < 1) return;
 
     // We need Columns A through D.
-    // Index 0 is Column A, Index 3 is Column D
+    // Index 0 is Column A, Index 2 is Column C, Index 3 is Column D
     const data = sheet.getRange(1, 1, lastRow, 4).getValues();
 
     for (let r = 0; r < data.length; r++) {
       const colAValue = data[r][0]; // Index 0 is Column A
+      const colCValue = data[r][2]; // Index 2 is Column C
       const colDValue = data[r][3]; // Index 3 is Column D
+
+      // Skip the line if Column C indicates it is a Total line
+      if (typeof colCValue === 'string' && colCValue.trim().toUpperCase().includes('TOTAL')) {
+        continue;
+      }
 
       if (typeof colAValue === 'string') {
         const valUpper = colAValue.trim().toUpperCase();
