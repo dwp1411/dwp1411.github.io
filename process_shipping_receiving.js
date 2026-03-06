@@ -87,9 +87,12 @@ function processShippingReceivingReport() {
       const colCValue = data[r][2]; // Index 2 is Column C
       const colDValue = data[r][3]; // Index 3 is Column D
 
-      // Skip the line if Column C indicates it is a Total line
-      if (typeof colCValue === 'string' && colCValue.trim().toUpperCase().includes('TOTAL')) {
-        continue;
+      // Skip the line if Column C indicates it is a Total line or similar aggregate (Loc, DirMK)
+      if (typeof colCValue === 'string') {
+        const colCUpper = colCValue.trim().toUpperCase();
+        if (colCUpper.includes('TOTAL') || colCUpper.includes('LOC') || colCUpper.includes('DIRMK')) {
+          continue;
+        }
       }
 
       if (typeof colAValue === 'string') {
