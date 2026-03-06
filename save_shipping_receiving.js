@@ -1,6 +1,6 @@
 /**
  * Saves the daily shipping/receiving report attachment and converts it to a Google Sheet.
- * Specifically looks for reports sent by mis-warehousing@crateandbarrel.com containing '05.45.' and ending in '.xls'.
+ * Specifically looks for reports sent by mis-warehousing@crateandbarrel.com containing '05.45.' or '05.46.' and ending in '.xls'.
  *
  * IMPORTANT: To use this script, you MUST enable the Drive API v3:
  * 1. Open your Apps Script editor.
@@ -35,8 +35,8 @@ function saveShippingReceivingReport() {
           const attachment = attachments[k];
           const fileName = attachment.getName();
 
-          // Look for .xls extension and the key '05.45.' substring in the filename
-          if (fileName.toLowerCase().endsWith('.xls') && fileName.includes('05.45.')) {
+          // Look for .xls extension and either '05.45.' or '05.46.' substring in the filename
+          if (fileName.toLowerCase().endsWith('.xls') && (fileName.includes('05.45.') || fileName.includes('05.46.'))) {
             console.log(`Found matching report: ${fileName}`);
 
             // Get base name to check for existing converted Google Sheets
@@ -77,7 +77,7 @@ function saveShippingReceivingReport() {
     }
 
     if (!reportFound) {
-      console.log("No matching '05.45.' reports found in the recent emails.");
+      console.log("No matching '05.45.' or '05.46.' reports found in the recent emails.");
     }
 
   } catch (e) {
