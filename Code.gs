@@ -38,6 +38,7 @@ function setupDatabase() {
 function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('Index')
       .setTitle('JSO Tracker')
+      .setFaviconUrl('https://raw.githubusercontent.com/google/material-design-icons/master/png/hardware/security/materialicons/24dp/2x/baseline_security_black_24dp.png')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1'); // Mobile friendly
 }
@@ -61,7 +62,10 @@ function getHierarchy() {
 
     for (let i = 0; i < data.length; i++) {
       const associate = String(data[i][0]).trim();
-      const leader = String(data[i][1]).trim();
+      let leader = String(data[i][1]).trim();
+
+      // Remove any leading numbers and spaces to combine C&B and Temp leaders
+      leader = leader.replace(/^\d+\s*/, '').trim();
 
       if (associate && leader) {
         if (!hierarchy[leader]) {
