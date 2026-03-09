@@ -33,7 +33,8 @@ function processForwards() {
   if (!weekMatch) {
     throw new Error('Could not extract week number from filename: ' + forwardsFileName);
   }
-  const weekNum = weekMatch[1];
+  // Parse the week number as an integer to strip any leading zeros
+  const weekNum = parseInt(weekMatch[1], 10);
   Logger.log('Extracted week number: ' + weekNum);
 
   // 2. Read and aggregate data from the forwards file
