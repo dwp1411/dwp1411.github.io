@@ -232,6 +232,16 @@
       <form id="jsoForm" style="display: none;">
 
         <div class="form-group">
+          <label for="topic">Topic</label>
+          <select id="topic" name="topic" required>
+            <option value="" disabled selected>Select a Topic...</option>
+            <option value="Safety">Safety</option>
+            <option value="Productivity">Productivity</option>
+            <option value="Quality">Quality</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="leader">Select Leader</label>
           <select id="leader" name="leader" required>
             <option value="" disabled selected>Select a Leader...</option>
@@ -265,9 +275,55 @@
         </div>
 
         <button type="submit" id="submitBtn">Submit Observation</button>
-
-        <div id="messageArea" class="message"></div>
       </form>
+
+      <!-- COACHING FORM SECTION -->
+      <form id="coachingForm" style="display: none;">
+        <h3>Coaching & Corrective Action</h3>
+
+        <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 14px; border: 1px solid #dee2e6; margin-bottom:20px;">
+          <strong style="color: #495057;">Associate:</strong> <span id="coachAssociateName"></span><br/>
+          <strong style="color: #495057;">Original Note:</strong> <span id="coachOriginalNote" style="font-style: italic;"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="policyViolated">Policy / Safety Rule Violated</label>
+          <select id="policyViolated" required>
+            <option value="" disabled selected>Select Rule Violated...</option>
+            <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+            <option value="Cut safely. Ensure you are wearing safety gloves...">2. Cut safely. Ensure you are wearing safety gloves...</option>
+            <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+            <option value="Use walkways. Pedestrians must use designated walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+            <option value="Lift smart. Use proper lifting techniques...">5. Lift smart. Use proper lifting techniques...</option>
+            <option value="Report incidents. Incidents must be reported immediately.">6. Report incidents. Incidents must be reported immediately.</option>
+            <option value="Be fit for work. Before starting work, ensure you are ready...">7. Be fit for work. Before starting work, ensure you are ready...</option>
+            <option value="Be aware of moving vehicles. Watch out for moving equipment...">8. Be aware of moving vehicles. Watch out for moving equipment...</option>
+            <option value="Stay aware. Always pay attention to your surroundings.">9. Stay aware. Always pay attention to your surroundings.</option>
+            <option value="Think safety. Think safe, act safe and be safe!">10. Think safety. Think safe, act safe and be safe!</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="associatePerspective">Associate's Perspective</label>
+          <textarea id="associatePerspective" placeholder="What did the associate say?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="actionPlan">Agreed Action Plan</label>
+          <textarea id="actionPlan" placeholder="How to be better in the future..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="leaderNotes">Leader Coaching Notes</label>
+          <textarea id="leaderNotes" placeholder="Leader's final thoughts..." required></textarea>
+        </div>
+
+        <input type="hidden" id="observationId" />
+
+        <button type="submit" id="submitCoachBtn">Submit Coaching Record</button>
+      </form>
+
+      <div id="messageArea" class="message"></div>
     </div>
 
     <script>
@@ -275,10 +331,29 @@
 
       // Initialization: Load leaders from server
       document.addEventListener('DOMContentLoaded', function() {
-        google.script.run
-          .withSuccessHandler(populateLeaders)
-          .withFailureHandler(showInitError)
-          .getHierarchy();
+        // First check URL params to see if we are in coaching mode
+        google.script.url.getLocation(function(location) {
+          if (location.parameters.coaching && location.parameters.coaching[0] === 'true') {
+            document.getElementById('loading-area').style.display = 'none';
+            document.getElementById('jsoForm').style.display = 'none';
+            document.getElementById('coachingForm').style.display = 'block';
+
+            // Populate static read-only info from URL
+            const obsId = location.parameters.id ? location.parameters.id[0] : '';
+            const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
+            const note = location.parameters.note ? location.parameters.note[0] : '';
+
+            document.getElementById('observationId').value = obsId;
+            document.getElementById('coachAssociateName').textContent = assoc;
+            document.getElementById('coachOriginalNote').textContent = decodeURIComponent(note);
+          } else {
+             // Standard Flow: Load hierarchy for main app
+            google.script.run
+              .withSuccessHandler(populateLeaders)
+              .withFailureHandler(showInitError)
+              .getHierarchy();
+          }
+        });
       });
 
       function populateLeaders(data) {
@@ -346,13 +421,14 @@
         const msg = document.getElementById('messageArea');
 
         // Validate form
+        const topic = document.getElementById('topic').value;
         const leader = document.getElementById('leader').value;
         const associate = document.getElementById('associate').value;
         const typePositive = document.getElementById('type-positive').checked;
         const typeNegative = document.getElementById('type-negative').checked;
         const notes = document.getElementById('notes').value;
 
-        if (!leader || !associate || (!typePositive && !typeNegative) || !notes.trim()) {
+        if (!topic || !leader || !associate || (!typePositive && !typeNegative) || !notes.trim()) {
           msg.textContent = "Please fill out all fields.";
           msg.className = "message error";
           msg.style.display = "block";
@@ -363,6 +439,7 @@
 
         // Prepare data
         const data = {
+          topic: topic,
           leader: leader,
           associate: associate,
           type: type,
@@ -379,6 +456,50 @@
           .withSuccessHandler(onSuccess)
           .withFailureHandler(onError)
           .submitObservation(data);
+      });
+
+      // Coaching Form Submission
+      document.getElementById('coachingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitCoachBtn');
+        const msg = document.getElementById('messageArea');
+
+        const data = {
+          id: document.getElementById('observationId').value,
+          policy: document.getElementById('policyViolated').value,
+          perspective: document.getElementById('associatePerspective').value,
+          actionPlan: document.getElementById('actionPlan').value,
+          leaderNotes: document.getElementById('leaderNotes').value
+        };
+
+        if (!data.id || !data.policy || !data.perspective.trim() || !data.actionPlan.trim() || !data.leaderNotes.trim()) {
+          msg.textContent = "Please fill out all fields.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        google.script.run
+          .withSuccessHandler(function() {
+             document.getElementById('coachingForm').reset();
+             document.getElementById('coachingForm').style.display = 'none';
+             msg.textContent = "Coaching record successfully saved! You may close this tab.";
+             msg.className = "message success";
+             msg.style.display = "block";
+          })
+          .withFailureHandler(function(error) {
+             btn.disabled = false;
+             btn.textContent = 'Submit Coaching Record';
+             msg.textContent = error.message || "An error occurred.";
+             msg.className = "message error";
+             msg.style.display = "block";
+          })
+          .submitCoaching(data);
       });
 
       function onSuccess() {
