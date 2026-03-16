@@ -97,6 +97,11 @@ function updateDaysPastTTASN() {
       let site = String(targetData[i][2]).trim();     // Column C is index 2
       let trailer = String(targetData[i][3]).trim();  // Column D is index 3
 
+      // Skip this row entirely if the site in Column C is not 191 or 199 (e.g., blank FedEx/UPS rows)
+      if (site !== '191' && site !== '199') {
+        continue;
+      }
+
       let key = trailer + '-' + site;
 
       if (etaMap[key]) {
