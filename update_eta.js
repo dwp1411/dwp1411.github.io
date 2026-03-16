@@ -97,7 +97,16 @@ function updateDaysPastTTASN() {
       let site = String(targetData[i][2]).trim();     // Column C is index 2
       let trailer = String(targetData[i][3]).trim();  // Column D is index 3
 
-      // Skip this row entirely if the site in Column C is not 191 or 199 (e.g., blank FedEx/UPS rows)
+      // If there is no information in column C, ensure column K is blank and skip the rest
+      if (site === '') {
+        if (targetKValues[i - 1][0] !== '') {
+          targetKValues[i - 1][0] = '';
+          updateCount++;
+        }
+        continue;
+      }
+
+      // Skip this row entirely if the site in Column C is not 191 or 199
       if (site !== '191' && site !== '199') {
         continue;
       }
