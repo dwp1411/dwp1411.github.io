@@ -28,7 +28,7 @@ function updateDaysPastTTASN() {
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    const fileName = `${yyyy}-${mm}-${dd} - In Transit ETA Now`;
+    const fileName = `${yyyy}-${mm}-${dd} - In Transit ETA`;
 
     // 2. Find the file in the specific folder
     const folderId = '1D8XcYrF_kj2Lx9mI5ZdeuGRrHLusd19P';
