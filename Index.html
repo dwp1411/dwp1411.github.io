@@ -286,21 +286,8 @@
           <strong style="color: #495057;">Original Note:</strong> <span id="coachOriginalNote" style="font-style: italic;"></span>
         </div>
 
-        <div class="form-group">
-          <label for="policyViolated">Policy / Safety Rule Violated</label>
-          <select id="policyViolated" required>
-            <option value="" disabled selected>Select Rule Violated...</option>
-            <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
-            <option value="Cut safely. Ensure you are wearing safety gloves...">2. Cut safely. Ensure you are wearing safety gloves...</option>
-            <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
-            <option value="Use walkways. Pedestrians must use designated walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
-            <option value="Lift smart. Use proper lifting techniques...">5. Lift smart. Use proper lifting techniques...</option>
-            <option value="Report incidents. Incidents must be reported immediately.">6. Report incidents. Incidents must be reported immediately.</option>
-            <option value="Be fit for work. Before starting work, ensure you are ready...">7. Be fit for work. Before starting work, ensure you are ready...</option>
-            <option value="Be aware of moving vehicles. Watch out for moving equipment...">8. Be aware of moving vehicles. Watch out for moving equipment...</option>
-            <option value="Stay aware. Always pay attention to your surroundings.">9. Stay aware. Always pay attention to your surroundings.</option>
-            <option value="Think safety. Think safe, act safe and be safe!">10. Think safety. Think safe, act safe and be safe!</option>
-          </select>
+        <div id="dynamicDropdownContainer">
+          <!-- The correct dropdown (Safety, Productivity, Quality) will be injected here via JavaScript -->
         </div>
 
         <div class="form-group">
@@ -342,10 +329,63 @@
             const obsId = location.parameters.id ? location.parameters.id[0] : '';
             const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
             const note = location.parameters.note ? location.parameters.note[0] : '';
+            const topic = location.parameters.topic ? location.parameters.topic[0] : 'Safety';
 
             document.getElementById('observationId').value = obsId;
             document.getElementById('coachAssociateName').textContent = assoc;
-            document.getElementById('coachOriginalNote').textContent = decodeURIComponent(note);
+            document.getElementById('coachOriginalNote').textContent = note; // getLocation already decodes it
+
+            const container = document.getElementById('dynamicDropdownContainer');
+
+            if (topic === 'Productivity') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Productivity / Efficiency Observation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Productivity Observation...</option>
+                    <option value="Follow standard process. Stick to approved SOPs and use the correct tools.">1. Follow standard process. Stick to approved SOPs and use the correct tools.</option>
+                    <option value="Maintain pace and focus. Stay on task to meet production targets.">2. Maintain pace and focus. Stay on task to meet production targets.</option>
+                    <option value="Workspace organization (5S). Keep your area clean to reduce wasted movement.">3. Workspace organization (5S). Keep your area clean to reduce wasted movement.</option>
+                    <option value="Communicate delays. Promptly report bottlenecks or equipment downtime.">4. Communicate delays. Promptly report bottlenecks or equipment downtime.</option>
+                    <option value="Resource management. Complete required tracking and avoid wasting materials.">5. Resource management. Complete required tracking and avoid wasting materials.</option>
+                  </select>
+                </div>
+              `;
+            } else if (topic === 'Quality') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Quality / Standard Violation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Quality Issue...</option>
+                    <option value="Care: Have care in what you do, execute with excellence.">1. Care: Have care in what you do, execute with excellence. [cite: 29, 30]</option>
+                    <option value="Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers.">2. Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers. [cite: 32, 33]</option>
+                    <option value="Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY.">3. Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY. [cite: 35, 36, 40]</option>
+                    <option value="TeamWork: Ensure all teammates are following safety and team lift protocols.">4. TeamWork: Ensure all teammates are following safety and team lift protocols. [cite: 44, 45]</option>
+                    <option value="Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work.">5. Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work. [cite: 48, 49]</option>
+                  </select>
+                </div>
+              `;
+            } else {
+              // Default to Safety
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Policy / Safety Rule Violated</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Rule Violated...</option>
+                    <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+                    <option value="Cut safely. Ensure you are wearing safety gloves...">2. Cut safely. Ensure you are wearing safety gloves...</option>
+                    <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+                    <option value="Use walkways. Pedestrians must use designated walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+                    <option value="Lift smart. Use proper lifting techniques...">5. Lift smart. Use proper lifting techniques...</option>
+                    <option value="Report incidents. Incidents must be reported immediately.">6. Report incidents. Incidents must be reported immediately.</option>
+                    <option value="Be fit for work. Before starting work, ensure you are ready...">7. Be fit for work. Before starting work, ensure you are ready...</option>
+                    <option value="Be aware of moving vehicles. Watch out for moving equipment...">8. Be aware of moving vehicles. Watch out for moving equipment...</option>
+                    <option value="Stay aware. Always pay attention to your surroundings.">9. Stay aware. Always pay attention to your surroundings.</option>
+                    <option value="Think safety. Think safe, act safe and be safe!">10. Think safety. Think safe, act safe and be safe!</option>
+                  </select>
+                </div>
+              `;
+            }
           } else {
              // Standard Flow: Load hierarchy for main app
             google.script.run
