@@ -248,10 +248,15 @@ function syncPayrollZonedHours() {
     let updatesMade = 0;
 
     for (let r = 0; r < numRows; r++) {
-      const payrollHours = parseFloat(payrollData[r][0]);
+      let payrollHours = parseFloat(payrollData[r][0]);
 
       // If Payroll Hours is 0 or NaN, skip
       if (isNaN(payrollHours) || payrollHours <= 0) continue;
+
+      // Deduct 30-minute break for any shift > 0.5 hours
+      if (payrollHours > 0.5) {
+        payrollHours -= 0.5;
+      }
 
       let totalZonedHours = 0;
       let zonedCols = [];
