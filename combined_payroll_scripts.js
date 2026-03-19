@@ -139,6 +139,19 @@ function submitHours() {
   var processedRowIndices = new Set();
 
   /**
+   * Helper function to normalize names for comparison
+   * (removes commas and extra spaces).
+   */
+  function normalizeName(nameStr) {
+    if (!nameStr) return "";
+    return nameStr.toString()
+      .trim()
+      .toLowerCase()
+      .replace(/,/g, '') // remove commas
+      .replace(/\s+/g, ' '); // collapse multiple spaces into one
+  }
+
+  /**
    * Updates Regular and OT hours for a given associate in memory arrays.
    */
   function updateHours(name, hours) {
@@ -148,10 +161,11 @@ function submitHours() {
     var reg = Math.min(hoursNum, 8);
     var ot = Math.max(0, hoursNum - 8);
 
-    var searchName = name.toString().trim().toLowerCase();
+    var searchName = normalizeName(name);
 
     for (var i = 0; i < payrollNames.length; i++) {
-      if (payrollNames[i][0].toString().trim().toLowerCase() === searchName) {
+      var currentName = normalizeName(payrollNames[i][0]);
+      if (currentName === searchName && searchName !== "") {
         regValues[i][0] = reg;
         otValues[i][0] = ot;
         processedRowIndices.add(i);
