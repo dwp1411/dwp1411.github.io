@@ -129,8 +129,17 @@ function submitHours() {
   var payrollLastRow = payrollDropSheet.getLastRow();
   var payrollNames = payrollDropSheet.getRange(1, config.nameCol, payrollLastRow, 1).getValues();
 
+  // Fetch existing Reg and OT hours into memory
+  var regRange = payrollDropSheet.getRange(1, config.regCol, payrollLastRow, 1);
+  var otRange = payrollDropSheet.getRange(1, config.otCol, payrollLastRow, 1);
+  var regValues = regRange.getValues();
+  var otValues = otRange.getValues();
+
+  // Track rows that get updated with hours
+  var processedRowIndices = new Set();
+
   /**
-   * Updates Regular and OT hours for a given associate.
+   * Updates Regular and OT hours for a given associate in memory arrays.
    */
   function updateHours(name, hours) {
     if (!name || hours === "" || hours === null || hours === undefined) return;
@@ -143,8 +152,9 @@ function submitHours() {
 
     for (var i = 0; i < payrollNames.length; i++) {
       if (payrollNames[i][0].toString().trim().toLowerCase() === searchName) {
-        payrollDropSheet.getRange(i + 1, config.regCol).setValue(reg);
-        payrollDropSheet.getRange(i + 1, config.otCol).setValue(ot);
+        regValues[i][0] = reg;
+        otValues[i][0] = ot;
+        processedRowIndices.add(i);
         return;
       }
     }
@@ -159,6 +169,23 @@ function submitHours() {
   for (var i = 0; i < tempData.length; i++) {
     updateHours(tempData[i][1], tempData[i][config.tempCol - 1]);
   }
+
+  // For any name in Payroll Drop that was NOT updated (meaning they are not in Crate/Temp today), set to 0.
+  for (var i = 0; i < payrollNames.length; i++) {
+    var rowName = payrollNames[i][0].toString().trim();
+
+    // Only set to 0 if the cell actually contains a name and hasn't been processed.
+    // Also skip standard header rows (e.g., 'Associate Name', 'Total', etc.) by skipping rows without names
+    // You may need to adapt this if you have specific headers on certain rows.
+    if (rowName !== "" && rowName.toLowerCase().indexOf('associate') === -1 && !processedRowIndices.has(i)) {
+      regValues[i][0] = 0;
+      otValues[i][0] = 0;
+    }
+  }
+
+  // Write the updated arrays back to the sheet in bulk
+  regRange.setValues(regValues);
+  otRange.setValues(otValues);
 
   // Quiet success per user request
 }
