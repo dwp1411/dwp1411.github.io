@@ -230,10 +230,11 @@ function syncPayrollZonedHours() {
 
     const targetDate = new Date(targetDateValue);
     targetDate.setHours(0, 0, 0, 0);
+    const dayOfWeek = targetDate.getDay();
 
     // Determine expected tab name based on day of week
     const daysOfWeek = ['Sunday', 'Monday_', 'Tuesday_', 'Wednesday_', 'Thursday_', 'Friday_', 'Saturday'];
-    const expectedTabName = daysOfWeek[targetDate.getDay()];
+    const expectedTabName = daysOfWeek[dayOfWeek];
 
     // Search for 191 Week files in the user's Drive
     const files = DriveApp.searchFiles("title contains '191 Week' and mimeType = 'application/vnd.google-apps.spreadsheet'");
@@ -278,8 +279,10 @@ function syncPayrollZonedHours() {
 
     const numRows = lastRow - startRow + 1;
 
-    // Column G is Payroll Hours (7), Columns I (9) to BB (54) are Zoned Hours.
-    // We will get G separately and I to BB separately to keep indices simple.
+    // Column B is Name (2), Column G is Payroll Hours (7), Columns I (9) to BB (54) are Zoned Hours.
+    const nameRange = targetSheet.getRange(startRow, 2, numRows, 1);
+    const nameData = nameRange.getValues();
+
     const payrollRange = targetSheet.getRange(startRow, 7, numRows, 1);
     const payrollData = payrollRange.getValues();
 
@@ -338,8 +341,83 @@ function syncPayrollZonedHours() {
     // Write back the updated Zoned Hours data
     zonedRange.setValues(zonedData);
 
-    // Notify the user of success via Toast on the master spreadsheet
-    masterSs.toast(`Success: Synced hours for ${updatesMade} associates on ${targetDate.toLocaleDateString()}.`, "Sync Complete", 5);
+    // --- Verify spelling/mismatches against Payroll Drop tab ---
+    const payrollDropSheet = targetSpreadsheet.getSheetByName('Payroll Drop');
+    let mismatches = [];
+
+    if (payrollDropSheet) {
+      const dropLastRow = payrollDropSheet.getLastRow();
+
+      const dayConfigs = {
+        1: { nameCol: 3, regCol: 6, otCol: 7 }, // Mon
+        2: { nameCol: 12, regCol: 15, otCol: 16 }, // Tue
+        3: { nameCol: 21, regCol: 24, otCol: 25 }, // Wed
+        4: { nameCol: 30, regCol: 33, otCol: 34 }, // Thu
+        5: { nameCol: 39, regCol: 42, otCol: 43 }, // Fri
+        6: { nameCol: 48, regCol: 51, otCol: 52 }, // Sat
+        0: { nameCol: 56, regCol: 59, otCol: 60 }  // Sun
+      };
+
+      const config = dayConfigs[dayOfWeek];
+
+      if (config && dropLastRow > 0) {
+        const dropNames = payrollDropSheet.getRange(1, config.nameCol, dropLastRow, 1).getValues();
+        const dropReg = payrollDropSheet.getRange(1, config.regCol, dropLastRow, 1).getValues();
+        const dropOt = payrollDropSheet.getRange(1, config.otCol, dropLastRow, 1).getValues();
+
+        // Build a map of daily tab names for fast lookup
+        // We use the same normalizeName logic used in submitHours
+        function normalizeName(nameStr) {
+          if (!nameStr) return "";
+          return nameStr.toString()
+            .trim()
+            .toLowerCase()
+            .replace(/,/g, '') // remove commas
+            .replace(/\s+/g, ' '); // collapse multiple spaces
+        }
+
+        const dailyTabNamesMap = new Map();
+        for (let r = 0; r < numRows; r++) {
+          const normName = normalizeName(nameData[r][0]);
+          const pHours = parseFloat(payrollData[r][0]);
+          if (normName !== "") {
+            dailyTabNamesMap.set(normName, isNaN(pHours) ? 0 : pHours);
+          }
+        }
+
+        // Check for any associate with hours in Drop tab but 0/missing in daily tab
+        for (let i = 0; i < dropLastRow; i++) {
+          const name = dropNames[i][0];
+          const reg = parseFloat(dropReg[i][0]) || 0;
+          const ot = parseFloat(dropOt[i][0]) || 0;
+          const totalHours = reg + ot;
+
+          if (totalHours > 0) {
+            const normName = normalizeName(name);
+            const dailyHours = dailyTabNamesMap.get(normName);
+
+            // If they are missing completely or have 0 hours in the daily tab, alert.
+            if (dailyHours === undefined || dailyHours <= 0) {
+              mismatches.push(name.toString().trim());
+            }
+          }
+        }
+      }
+    }
+
+    if (mismatches.length > 0) {
+      const ui = SpreadsheetApp.getUi();
+      ui.alert(
+        'Spelling / Missing Names Alert',
+        `The following associates have hours in 'Payroll Drop' for ${expectedTabName} but show 0 hours (or are missing) in the daily tab, likely due to a spelling mismatch:\n\n` +
+        mismatches.join('\n') +
+        `\n\nPlease check the timecard to fix their names so hours calculate properly!`,
+        ui.ButtonSet.OK
+      );
+    } else {
+      // Notify the user of silent success via Toast on the master spreadsheet
+      masterSs.toast(`Success: Synced hours for ${updatesMade} associates on ${targetDate.toLocaleDateString()}.`, "Sync Complete", 5);
+    }
 
   } catch (error) {
     console.error("Error in syncPayrollZonedHours:", error);
