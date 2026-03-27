@@ -162,15 +162,27 @@ function processSupervisor(sourceSheet, targetSheet, jobColMap, supervisorName) 
   const data = sourceSheet.getDataRange().getValues();
   const rangeInfo = SUPERVISOR_RANGES[supervisorName];
 
-  // 1. PREPARE BLOCK DATA
-  const numRowsToClear = rangeInfo.end - rangeInfo.start + 1;
-  const maxCols = Math.max(targetSheet.getLastColumn(), TARGET_COL_FORTHILL_INDEX);
+  // 1. SELECTIVE CLEARING
+  // Instead of clearing the entire row block (which wipes columns C-H that the user needs),
+  // we only clear Column B (Names), Column AZ (FortHill), and the specific Job Columns we write to.
+  const numRows = rangeInfo.end - rangeInfo.start + 1;
 
-  // Create a 2D array filled with empty strings for the entire block (starting from Col B)
-  // Number of columns = maxCols - 2 + 1 = maxCols - 1
-  const blockData = Array.from({ length: numRowsToClear }, () => Array(maxCols - 1).fill(''));
+  // Clear Column B (Names)
+  targetSheet.getRange(rangeInfo.start, TARGET_COL_NAME_INDEX, numRows, 1).clearContent();
 
-  let currentTargetRowIndex = 0; // 0-based index for blockData array
+  // Clear FortHill Column (AZ)
+  targetSheet.getRange(rangeInfo.start, TARGET_COL_FORTHILL_INDEX, numRows, 1).clearContent();
+
+  // Clear Job Columns
+  jobColMap.forEach((colIndex) => {
+    targetSheet.getRange(rangeInfo.start, colIndex, numRows, 1).clearContent();
+  });
+
+  // 2. PREPARE UPDATES
+  // Since we can't use a full block overwrite without destroying C-H, we use a Map
+  // to collect individual cell updates, then apply them.
+  const updates = new Map();
+  let currentTargetRow = rangeInfo.start;
 
   // Iterate source rows (assuming Row 1 is header)
   for (let i = 1; i < data.length; i++) {
@@ -180,17 +192,17 @@ function processSupervisor(sourceSheet, targetSheet, jobColMap, supervisorName) 
 
     const rawName = String(row[COL_NAME]).trim();
     const building = String(row[COL_BUILDING]).trim(); // Col D
-    const present = String(row[COL_PRESENT]).trim().toUpperCase(); // Col F
+    const present = String(row[COL_PRESENT]).trim().toUpperCase(); // Col H
 
     if (present === 'Y') {
 
       // Check if we have exceeded the allocated space for this supervisor
-      if (currentTargetRowIndex >= numRowsToClear) {
-        throw new Error(`Out of space for ${supervisorName}. Tried to write more rows than the limit of ${rangeInfo.end}. Please ask an Admin to increase row allocation in the script.`);
+      if (currentTargetRow > rangeInfo.end) {
+        throw new Error(`Out of space for ${supervisorName}. Tried to write to row ${currentTargetRow}, but limit is ${rangeInfo.end}. Please ask an Admin to increase row allocation in the script.`);
       }
 
-      // 1. Write Name to Column B (Index 0 in blockData since it starts at Col B)
-      blockData[currentTargetRowIndex][0] = rawName;
+      // 1. Write Name to Column B
+      addUpdate(updates, currentTargetRow, TARGET_COL_NAME_INDEX, rawName);
 
       let totalRowHours = 0;
 
@@ -207,9 +219,7 @@ function processSupervisor(sourceSheet, targetSheet, jobColMap, supervisorName) 
             hours1 = customHours;
           }
         }
-
-        const colIndex = targetCol1 - 2; // targetCol1 is 1-based, blockData starts at Col 2
-        blockData[currentTargetRowIndex][colIndex] = hours1;
+        addUpdate(updates, currentTargetRow, targetCol1, hours1);
         totalRowHours += hours1;
       } else {
         console.warn(`Job 1 "${job1}" for "${rawName}" not found in Timecard headers.`);
@@ -230,9 +240,7 @@ function processSupervisor(sourceSheet, targetSheet, jobColMap, supervisorName) 
               }
             }
             if (hours2 > 0) {
-              const colIndex = targetCol2 - 2;
-              const currentVal = Number(blockData[currentTargetRowIndex][colIndex]) || 0;
-              blockData[currentTargetRowIndex][colIndex] = currentVal + hours2;
+              addUpdate(updates, currentTargetRow, targetCol2, hours2);
               totalRowHours += hours2;
             }
           } else {
@@ -243,20 +251,40 @@ function processSupervisor(sourceSheet, targetSheet, jobColMap, supervisorName) 
 
       // 4. Process FortHill Hours (Column AZ)
       if (building.toLowerCase().includes('forthill') && totalRowHours > 0) {
-        const colIndex = TARGET_COL_FORTHILL_INDEX - 2;
-        const currentVal = Number(blockData[currentTargetRowIndex][colIndex]) || 0;
-        blockData[currentTargetRowIndex][colIndex] = currentVal + totalRowHours;
+        addUpdate(updates, currentTargetRow, TARGET_COL_FORTHILL_INDEX, totalRowHours);
       }
 
       // Increment row pointer for the next present employee
-      currentTargetRowIndex++;
+      currentTargetRow++;
     }
   }
 
-  // 2. APPLY UPDATES TO SHEET
-  // Write the entire block in one operation to overwrite old data and set new data instantly
-  console.log(`Writing data for ${supervisorName} to Timecard block.`);
-  targetSheet.getRange(rangeInfo.start, 2, numRowsToClear, maxCols - 1).setValues(blockData);
+  // 3. APPLY UPDATES TO SHEET
+  if (updates.size > 0) {
+    console.log(`Writing ${updates.size} updates to Timecard block.`);
+    // Since we must preserve surrounding columns, individual cell setting is safest.
+    updates.forEach((value, key) => {
+      const [r, c] = key.split('_').map(Number);
+      targetSheet.getRange(r, c).setValue(value);
+    });
+  } else {
+    console.log(`No updates to write for ${supervisorName} (nobody marked Y).`);
+  }
+}
+
+/**
+ * Helper to add values to the update map.
+ * If hours are being added to the same cell, it sums them.
+ * If a string (like a Name) is being added, it overwrites.
+ */
+function addUpdate(updates, r, c, value) {
+  const key = `${r}_${c}`;
+  if (typeof value === 'number') {
+    const currentTotal = updates.get(key) || 0;
+    updates.set(key, currentTotal + value);
+  } else {
+    updates.set(key, value); // String names
+  }
 }
 
 /**
