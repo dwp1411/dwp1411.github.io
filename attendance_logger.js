@@ -66,12 +66,12 @@ const SUPERVISOR_RANGES = {
 const DEFAULT_HOURS = 7.5;
 // Column Indices (0-based: A=0, B=1, C=2...)
 const COL_NAME = 0;      // Column A
-const COL_JOB_1 = 2;     // Column C
+const COL_JOB_1 = 2;     // Column C (Line Detail 1)
 const COL_BUILDING = 3;  // Column D
-const COL_PRESENT = 5;   // Column F (Present for Work Y/N) -- FIXED TO MATCH USER DESCRIPTION "Column F"
+const COL_PRESENT = 7;   // Column H (Present for Work Y/N)
 const COL_HOURS_1 = 8;   // Column I (Updated/Hours)
-const COL_JOB_2 = 11;    // Column L (Avoiding button in K)
-const COL_HOURS_2 = 12;  // Column M
+const COL_JOB_2 = 9;     // Column J (Line Detail 2)
+const COL_HOURS_2 = 10;  // Column K (Hours 2)
 
 // Target Columns
 const TARGET_COL_NAME_INDEX = 2; // Column B (1-based for getRange)
