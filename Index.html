@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+
+      .background-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .bg-image {
+        flex: 1;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      /* Make the images slightly darker/grayscaled so they don't overpower the form */
+      .bg-image::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .bg-1 { background-image: url('data:image/jpeg;base64,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'); }
+
+      @media (min-width: 768px) {
+        .background-container {
+          flex-direction: row;
+        }
+      }
+
+      body {
+        background-color: transparent;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f7f6;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      .container {
+        background-color: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(5px);
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 30px;
+        width: 100%;
+        max-width: 400px;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 24px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      select, textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position-x: 95%;
+        background-position-y: 50%;
+      }
+      textarea {
+        background-image: none;
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+      }
+      select:focus, textarea:focus {
+        border-color: #0056b3;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0,86,179,0.2);
+      }
+      .toggle-container {
+        display: flex;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid #ccc;
+        margin-top: 5px;
+      }
+      .toggle-option {
+        flex: 1;
+        text-align: center;
+      }
+      .toggle-option input {
+        display: none;
+      }
+      .toggle-option label {
+        display: block;
+        padding: 12px;
+        margin: 0;
+        cursor: pointer;
+        background-color: #f8f9fa;
+        color: #555;
+        font-weight: bold;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+      .toggle-option input:checked + label {
+        color: white;
+      }
+      #type-positive:checked + label {
+        background-color: #28a745;
+        border-color: #28a745;
+      }
+      #type-negative:checked + label {
+        background-color: #dc3545;
+        border-color: #dc3545;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      button:hover {
+        background-color: #004494;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .message {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        display: none;
+        font-weight: bold;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      #loader {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        vertical-align: middle;
+        margin-right: 10px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .spinner-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      }
+      .initial-loader {
+        border: 4px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 4px solid #0056b3;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background-container">
+      <div class="bg-image bg-1"></div>
+      <div class="bg-image bg-2"></div>
+      <div class="bg-image bg-3"></div>
+    </div>
+
+    <div class="container">
+      <h2>Job Safety Observation</h2>
+
+      <div id="loading-area" class="spinner-container" style="display: block; text-align: center;">
+        <div class="initial-loader"></div>
+        <p style="color: #666; font-size: 14px;">Loading Staff List...</p>
+      </div>
+
+      <form id="jsoForm" style="display: none;">
+
+        <div class="form-group">
+          <label for="topic">Topic</label>
+          <select id="topic" name="topic" required>
+            <option value="" disabled selected>Select a Topic...</option>
+            <option value="Safety">Safety</option>
+            <option value="Productivity">Productivity</option>
+            <option value="Quality">Quality</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="leader">Select Leader</label>
+          <select id="leader" name="leader" required>
+            <option value="" disabled selected>Select a Leader...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="associate">Select Associate</label>
+          <select id="associate" name="associate" required disabled>
+            <option value="" disabled selected>First select a Leader</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Observation Type</label>
+          <div class="toggle-container">
+            <div class="toggle-option">
+              <input type="radio" id="type-positive" name="type" value="Positive" required>
+              <label for="type-positive">Positive</label>
+            </div>
+            <div class="toggle-option">
+              <input type="radio" id="type-negative" name="type" value="Negative">
+              <label for="type-negative">Negative</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes / Action Taken</label>
+          <textarea id="notes" name="notes" placeholder="Describe the observation here..." required></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn">Submit Observation</button>
+      </form>
+
+      <!-- COACHING FORM SECTION -->
+      <form id="coachingForm" style="display: none;">
+        <h3>Coaching & Corrective Action</h3>
+
+        <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 14px; border: 1px solid #dee2e6; margin-bottom:20px;">
+          <strong style="color: #495057;">Associate:</strong> <span id="coachAssociateName"></span><br/>
+          <strong style="color: #495057;">Original Note:</strong> <span id="coachOriginalNote" style="font-style: italic;"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="policyViolated">Policy / Safety Rule Violated</label>
+          <select id="policyViolated" required>
+            <option value="" disabled selected>Select Rule Violated...</option>
+            <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+            <option value="Cut safely. Ensure you are wearing safety gloves...">2. Cut safely. Ensure you are wearing safety gloves...</option>
+            <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+            <option value="Use walkways. Pedestrians must use designated walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+            <option value="Lift smart. Use proper lifting techniques...">5. Lift smart. Use proper lifting techniques...</option>
+            <option value="Report incidents. Incidents must be reported immediately.">6. Report incidents. Incidents must be reported immediately.</option>
+            <option value="Be fit for work. Before starting work, ensure you are ready...">7. Be fit for work. Before starting work, ensure you are ready...</option>
+            <option value="Be aware of moving vehicles. Watch out for moving equipment...">8. Be aware of moving vehicles. Watch out for moving equipment...</option>
+            <option value="Stay aware. Always pay attention to your surroundings.">9. Stay aware. Always pay attention to your surroundings.</option>
+            <option value="Think safety. Think safe, act safe and be safe!">10. Think safety. Think safe, act safe and be safe!</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="associatePerspective">Associate's Perspective</label>
+          <textarea id="associatePerspective" placeholder="What did the associate say?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="actionPlan">Agreed Action Plan</label>
+          <textarea id="actionPlan" placeholder="How to be better in the future..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="leaderNotes">Leader Coaching Notes</label>
+          <textarea id="leaderNotes" placeholder="Leader's final thoughts..." required></textarea>
+        </div>
+
+        <input type="hidden" id="observationId" />
+
+        <button type="submit" id="submitCoachBtn">Submit Coaching Record</button>
+      </form>
+
+      <div id="messageArea" class="message"></div>
+    </div>
+
+    <script>
+      let staffHierarchy = {};
+
+      // Initialization: Load leaders from server
+      document.addEventListener('DOMContentLoaded', function() {
+        // First check URL params to see if we are in coaching mode
+        google.script.url.getLocation(function(location) {
+          if (location.parameters.coaching && location.parameters.coaching[0] === 'true') {
+            document.getElementById('loading-area').style.display = 'none';
+            document.getElementById('jsoForm').style.display = 'none';
+            document.getElementById('coachingForm').style.display = 'block';
+
+            // Populate static read-only info from URL
+            const obsId = location.parameters.id ? location.parameters.id[0] : '';
+            const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
+            const note = location.parameters.note ? location.parameters.note[0] : '';
+
+            document.getElementById('observationId').value = obsId;
+            document.getElementById('coachAssociateName').textContent = decodeURIComponent(assoc);
+            document.getElementById('coachOriginalNote').textContent = decodeURIComponent(note);
+          } else {
+             // Standard Flow: Load hierarchy for main app
+            google.script.run
+              .withSuccessHandler(populateLeaders)
+              .withFailureHandler(showInitError)
+              .getHierarchy();
+          }
+        });
+      });
+
+      function populateLeaders(data) {
+        staffHierarchy = data;
+        const leaderSelect = document.getElementById('leader');
+
+        // Hide loader, show form
+        document.getElementById('loading-area').style.display = 'none';
+        document.getElementById('jsoForm').style.display = 'block';
+
+        if (Object.keys(staffHierarchy).length === 0) {
+           showInitError("No staff data found in the Attendance Sheet.");
+           return;
+        }
+
+        // Add leaders to dropdown
+        const leaders = Object.keys(staffHierarchy).sort();
+        leaders.forEach(leader => {
+          const option = document.createElement('option');
+          option.value = leader;
+          option.textContent = leader;
+          leaderSelect.appendChild(option);
+        });
+
+        // Add event listener to update associates when leader changes
+        leaderSelect.addEventListener('change', updateAssociates);
+      }
+
+      function updateAssociates() {
+        const leaderSelect = document.getElementById('leader');
+        const associateSelect = document.getElementById('associate');
+        const selectedLeader = leaderSelect.value;
+
+        // Clear current options
+        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
+
+        if (selectedLeader && staffHierarchy[selectedLeader]) {
+          const associates = staffHierarchy[selectedLeader];
+          associates.forEach(associate => {
+            const option = document.createElement('option');
+            option.value = associate;
+            option.textContent = associate;
+            associateSelect.appendChild(option);
+          });
+          associateSelect.disabled = false;
+        } else {
+          associateSelect.disabled = true;
+          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+      }
+
+      function showInitError(error) {
+        document.getElementById('loading-area').style.display = 'none';
+        const msg = document.getElementById('messageArea');
+        msg.textContent = "Error loading staff data: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+
+      // Form Submission
+      document.getElementById('jsoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        // Validate form
+        const topic = document.getElementById('topic').value;
+        const leader = document.getElementById('leader').value;
+        const associate = document.getElementById('associate').value;
+        const typePositive = document.getElementById('type-positive').checked;
+        const typeNegative = document.getElementById('type-negative').checked;
+        const notes = document.getElementById('notes').value;
+
+        if (!topic || !leader || !associate || (!typePositive && !typeNegative) || !notes.trim()) {
+          msg.textContent = "Please fill out all fields.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        const type = typePositive ? 'Positive' : 'Negative';
+
+        // Prepare data
+        const data = {
+          topic: topic,
+          leader: leader,
+          associate: associate,
+          type: type,
+          notes: notes
+        };
+
+        // UI Feedback
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        // Send to server
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onError)
+          .submitObservation(data);
+      });
+
+      // Coaching Form Submission
+      document.getElementById('coachingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitCoachBtn');
+        const msg = document.getElementById('messageArea');
+
+        const data = {
+          id: document.getElementById('observationId').value,
+          policy: document.getElementById('policyViolated').value,
+          perspective: document.getElementById('associatePerspective').value,
+          actionPlan: document.getElementById('actionPlan').value,
+          leaderNotes: document.getElementById('leaderNotes').value
+        };
+
+        if (!data.id || !data.policy || !data.perspective.trim() || !data.actionPlan.trim() || !data.leaderNotes.trim()) {
+          msg.textContent = "Please fill out all fields.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        google.script.run
+          .withSuccessHandler(function() {
+             document.getElementById('coachingForm').reset();
+             document.getElementById('coachingForm').style.display = 'none';
+             msg.textContent = "Coaching record successfully saved! You may close this tab.";
+             msg.className = "message success";
+             msg.style.display = "block";
+          })
+          .withFailureHandler(function(error) {
+             btn.disabled = false;
+             btn.textContent = 'Submit Coaching Record';
+             msg.textContent = error.message || "An error occurred.";
+             msg.className = "message error";
+             msg.style.display = "block";
+          })
+          .submitCoaching(data);
+      });
+
+      function onSuccess() {
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        // Reset form
+        document.getElementById('jsoForm').reset();
+        document.getElementById('associate').disabled = true;
+        document.getElementById('associate').innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+
+        // Restore button
+        btn.disabled = false;
+        btn.textContent = 'Submit Observation';
+
+        // Show success message
+        msg.textContent = "Observation successfully recorded!";
+        msg.className = "message success";
+        msg.style.display = "block";
+
+        // Hide message after 4 seconds
+        setTimeout(() => {
+          msg.style.display = "none";
+        }, 4000);
+      }
+
+      function onError(error) {
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        // Restore button
+        btn.disabled = false;
+        btn.textContent = 'Submit Observation';
+
+        // Show error message
+        msg.textContent = "Error: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+    </script>
+  </body>
+</html>
