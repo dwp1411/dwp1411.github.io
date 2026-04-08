@@ -118,11 +118,62 @@ function submitHours() {
     crateData = crateSheet.getRange(2, 1, crateLastRow - 1, 8).getValues();
   }
 
-  // Get data from Temp tab (Name in B, Hours in Mon-Sun columns F-L)
+  // Dynamically find Temp columns based on headers
   var tempLastRow = tempSheet.getLastRow();
+  var tempLastCol = tempSheet.getLastColumn();
   var tempData = [];
-  if (tempLastRow > 1) {
-    tempData = tempSheet.getRange(2, 1, tempLastRow - 1, 12).getValues();
+
+  if (tempLastRow > 0 && tempLastCol > 0) {
+    var fullTempData = tempSheet.getRange(1, 1, Math.min(tempLastRow, 50), tempLastCol).getValues();
+    var headerRowIndex = -1;
+    var nameColIdx = -1;
+    var daysCols = { 1: -1, 2: -1, 3: -1, 4: -1, 5: -1, 6: -1, 0: -1 };
+
+    // Find header row containing "Employee Name"
+    for (var r = 0; r < fullTempData.length; r++) {
+      for (var c = 0; c < fullTempData[r].length; c++) {
+        var cellVal = String(fullTempData[r][c]).trim().toLowerCase();
+        if (cellVal.indexOf('employee name') !== -1) {
+          headerRowIndex = r;
+          break;
+        }
+      }
+      if (headerRowIndex !== -1) break;
+    }
+
+    if (headerRowIndex !== -1) {
+      // Map columns
+      for (var c = 0; c < tempLastCol; c++) {
+        var hVal = String(fullTempData[headerRowIndex][c]).trim().toLowerCase();
+        if (hVal.indexOf('employee name') !== -1) nameColIdx = c;
+        else if (hVal.indexOf('mon') !== -1) daysCols[1] = c;
+        else if (hVal.indexOf('tue') !== -1) daysCols[2] = c;
+        else if (hVal.indexOf('wed') !== -1) daysCols[3] = c;
+        else if (hVal.indexOf('thu') !== -1) daysCols[4] = c;
+        else if (hVal.indexOf('fri') !== -1) daysCols[5] = c;
+        else if (hVal.indexOf('sat') !== -1) daysCols[6] = c;
+        else if (hVal.indexOf('sun') !== -1) daysCols[0] = c;
+      }
+
+      // Pull dynamic temp data starting after header
+      var dataStartRow = headerRowIndex + 2; // +1 for 0-index offset, +1 to go to next row
+      if (tempLastRow >= dataStartRow) {
+        var rawTempData = tempSheet.getRange(dataStartRow, 1, tempLastRow - dataStartRow + 1, tempLastCol).getValues();
+        var targetTempColIdx = daysCols[dayOfWeek];
+
+        if (nameColIdx !== -1 && targetTempColIdx !== -1) {
+          for (var r = 0; r < rawTempData.length; r++) {
+            tempData.push([
+              null, // Pad to keep Crate-like structure mapping (name usually at [1])
+              rawTempData[r][nameColIdx],
+              rawTempData[r][targetTempColIdx] // we'll read this later instead of config.tempCol
+            ]);
+          }
+        }
+      }
+    } else {
+      SpreadsheetApp.getUi().alert('Warning: Could not find "Employee Name" header in Temp tab. Temp data skipped.');
+    }
   }
 
   // Get Payroll Drop names for matching
@@ -140,15 +191,56 @@ function submitHours() {
 
   /**
    * Helper function to normalize names for comparison
-   * (removes commas and extra spaces).
+   * (removes punctuation, converts to uppercase, standardizes spaces).
    */
   function normalizeName(nameStr) {
     if (!nameStr) return "";
     return nameStr.toString()
       .trim()
-      .toLowerCase()
-      .replace(/,/g, '') // remove commas
-      .replace(/\s+/g, ' '); // collapse multiple spaces into one
+      .toUpperCase()
+      .replace(/[.,\-]/g, ' ') // replace commas, dots, hyphens with space
+      .replace(/\s+/g, ' ')    // collapse multiple spaces into one
+      .trim();
+  }
+
+  /**
+   * Fuzzy matches names by checking if the primary parts of the search name
+   * exist in the target name.
+   */
+  function namesMatch(searchStr, targetStr) {
+    if (!searchStr || !targetStr) return false;
+
+    // Direct exact match
+    if (searchStr === targetStr) return true;
+
+    // Substring match (e.g. "ACOSTA LOZADA MADEYLEN" inside "ACOSTA LOZADA MADEYLEN A")
+    if (targetStr.indexOf(searchStr) !== -1) return true;
+    if (searchStr.indexOf(targetStr) !== -1) return true;
+
+    // Token-based match: split both into words.
+    // Ensure all words > 2 chars from the search name exist in the target name.
+    // This helps match "GREGORIE RAMIREZ MAGGREGOR" to "GREGORIE RAMIREZ MAGREGOR" if we look at parts,
+    // though for slight typos like double letters, simple token intersection usually isn't enough,
+    // but works perfectly for missing middle initials or reordered names.
+    var searchTokens = searchStr.split(' ');
+    var targetTokens = targetStr.split(' ');
+
+    // For very specific typos like "MAGGREGOR" vs "MAGREGOR",
+    // we check if the first 4 chars of the first and last words match.
+    if (searchTokens.length >= 2 && targetTokens.length >= 2) {
+      var sFirst = searchTokens[0];
+      var sLast = searchTokens[searchTokens.length - 1];
+
+      // Look for a token in target that starts the same way
+      var foundFirst = targetTokens.some(function(t) { return t.indexOf(sFirst.substring(0, 4)) === 0; });
+      var foundLast = targetTokens.some(function(t) { return t.indexOf(sLast.substring(0, 4)) === 0; });
+
+      if (foundFirst && foundLast) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -162,14 +254,16 @@ function submitHours() {
     var ot = Math.max(0, hoursNum - 8);
 
     var searchName = normalizeName(name);
+    if (searchName === "") return;
 
     for (var i = 0; i < payrollNames.length; i++) {
       var currentName = normalizeName(payrollNames[i][0]);
-      if (currentName === searchName && searchName !== "") {
+
+      if (namesMatch(searchName, currentName)) {
         regValues[i][0] = reg;
         otValues[i][0] = ot;
         processedRowIndices.add(i);
-        return;
+        return; // Match found, break loop
       }
     }
   }
@@ -181,7 +275,7 @@ function submitHours() {
 
   // Process Temp data
   for (var i = 0; i < tempData.length; i++) {
-    updateHours(tempData[i][1], tempData[i][config.tempCol - 1]);
+    updateHours(tempData[i][1], tempData[i][2]); // We placed the target hours directly into index 2 during extraction
   }
 
   // For any name in Payroll Drop that was NOT updated (meaning they are not in Crate/Temp today), set to 0.
@@ -365,23 +459,42 @@ function syncPayrollZonedHours() {
         const dropReg = payrollDropSheet.getRange(1, config.regCol, dropLastRow, 1).getValues();
         const dropOt = payrollDropSheet.getRange(1, config.otCol, dropLastRow, 1).getValues();
 
-        // Build a map of daily tab names for fast lookup
-        // We use the same normalizeName logic used in submitHours
-        function normalizeName(nameStr) {
+        // Build a list of daily tab names for lookup
+        // We use the same robust normalize/fuzzy match logic
+        function localNormalizeName(nameStr) {
           if (!nameStr) return "";
           return nameStr.toString()
             .trim()
-            .toLowerCase()
-            .replace(/,/g, '') // remove commas
-            .replace(/\s+/g, ' '); // collapse multiple spaces
+            .toUpperCase()
+            .replace(/[.,\-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
         }
 
-        const dailyTabNamesMap = new Map();
+        function localNamesMatch(searchStr, targetStr) {
+          if (!searchStr || !targetStr) return false;
+          if (searchStr === targetStr) return true;
+          if (targetStr.indexOf(searchStr) !== -1 || searchStr.indexOf(targetStr) !== -1) return true;
+
+          let searchTokens = searchStr.split(' ');
+          let targetTokens = targetStr.split(' ');
+
+          if (searchTokens.length >= 2 && targetTokens.length >= 2) {
+            let sFirst = searchTokens[0];
+            let sLast = searchTokens[searchTokens.length - 1];
+            let foundFirst = targetTokens.some(t => t.indexOf(sFirst.substring(0, 4)) === 0);
+            let foundLast = targetTokens.some(t => t.indexOf(sLast.substring(0, 4)) === 0);
+            if (foundFirst && foundLast) return true;
+          }
+          return false;
+        }
+
+        const dailyTabNamesList = [];
         for (let r = 0; r < numRows; r++) {
-          const normName = normalizeName(nameData[r][0]);
+          const normName = localNormalizeName(nameData[r][0]);
           const pHours = parseFloat(payrollData[r][0]);
           if (normName !== "") {
-            dailyTabNamesMap.set(normName, isNaN(pHours) ? 0 : pHours);
+            dailyTabNamesList.push({ name: normName, hours: isNaN(pHours) ? 0 : pHours });
           }
         }
 
@@ -393,11 +506,20 @@ function syncPayrollZonedHours() {
           const totalHours = reg + ot;
 
           if (totalHours > 0) {
-            const normName = normalizeName(name);
-            const dailyHours = dailyTabNamesMap.get(normName);
+            const searchName = localNormalizeName(name);
+            let foundMatch = false;
+            let dailyHours = 0;
+
+            for (let j = 0; j < dailyTabNamesList.length; j++) {
+              if (localNamesMatch(searchName, dailyTabNamesList[j].name)) {
+                foundMatch = true;
+                dailyHours = dailyTabNamesList[j].hours;
+                break;
+              }
+            }
 
             // If they are missing completely or have 0 hours in the daily tab, alert.
-            if (dailyHours === undefined || dailyHours <= 0) {
+            if (!foundMatch || dailyHours <= 0) {
               mismatches.push(name.toString().trim());
             }
           }
