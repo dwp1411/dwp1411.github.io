@@ -204,43 +204,11 @@ function submitHours() {
   }
 
   /**
-   * Fuzzy matches names by checking if the primary parts of the search name
-   * exist in the target name.
+   * Exact matches normalized names to prevent false positives.
    */
   function namesMatch(searchStr, targetStr) {
     if (!searchStr || !targetStr) return false;
-
-    // Direct exact match
-    if (searchStr === targetStr) return true;
-
-    // Substring match (e.g. "ACOSTA LOZADA MADEYLEN" inside "ACOSTA LOZADA MADEYLEN A")
-    if (targetStr.indexOf(searchStr) !== -1) return true;
-    if (searchStr.indexOf(targetStr) !== -1) return true;
-
-    // Token-based match: split both into words.
-    // Ensure all words > 2 chars from the search name exist in the target name.
-    // This helps match "GREGORIE RAMIREZ MAGGREGOR" to "GREGORIE RAMIREZ MAGREGOR" if we look at parts,
-    // though for slight typos like double letters, simple token intersection usually isn't enough,
-    // but works perfectly for missing middle initials or reordered names.
-    var searchTokens = searchStr.split(' ');
-    var targetTokens = targetStr.split(' ');
-
-    // For very specific typos like "MAGGREGOR" vs "MAGREGOR",
-    // we check if the first 4 chars of the first and last words match.
-    if (searchTokens.length >= 2 && targetTokens.length >= 2) {
-      var sFirst = searchTokens[0];
-      var sLast = searchTokens[searchTokens.length - 1];
-
-      // Look for a token in target that starts the same way
-      var foundFirst = targetTokens.some(function(t) { return t.indexOf(sFirst.substring(0, 4)) === 0; });
-      var foundLast = targetTokens.some(function(t) { return t.indexOf(sLast.substring(0, 4)) === 0; });
-
-      if (foundFirst && foundLast) {
-        return true;
-      }
-    }
-
-    return false;
+    return searchStr === targetStr;
   }
 
   /**
@@ -473,20 +441,7 @@ function syncPayrollZonedHours() {
 
         function localNamesMatch(searchStr, targetStr) {
           if (!searchStr || !targetStr) return false;
-          if (searchStr === targetStr) return true;
-          if (targetStr.indexOf(searchStr) !== -1 || searchStr.indexOf(targetStr) !== -1) return true;
-
-          let searchTokens = searchStr.split(' ');
-          let targetTokens = targetStr.split(' ');
-
-          if (searchTokens.length >= 2 && targetTokens.length >= 2) {
-            let sFirst = searchTokens[0];
-            let sLast = searchTokens[searchTokens.length - 1];
-            let foundFirst = targetTokens.some(t => t.indexOf(sFirst.substring(0, 4)) === 0);
-            let foundLast = targetTokens.some(t => t.indexOf(sLast.substring(0, 4)) === 0);
-            if (foundFirst && foundLast) return true;
-          }
-          return false;
+          return searchStr === targetStr;
         }
 
         const dailyTabNamesList = [];
