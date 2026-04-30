@@ -1,14 +1,807 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your 18th Birthday Adventure!</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <h1>Happy 18th Birthday!</h1>
-    <p>It's your special day! A day full of choices and surprises awaits.  Let's get started!</p>
-    <a href="phase1_intro.html" class="button">Begin Your Adventure</a>
-</body>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+
+      .background-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .bg-image {
+        flex: 1;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      /* Make the images slightly darker/grayscaled so they don't overpower the form */
+      .bg-image::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .bg-1 { background-color: #f1f3f5; }
+      .bg-2 { background-color: #e9ecef; }
+      .bg-3 { background-color: #dee2e6; }
+
+      @media (min-width: 768px) {
+        .background-container {
+          flex-direction: row;
+        }
+      }
+
+      body {
+        background-color: transparent;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f7f6;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      .container {
+        background-color: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(5px);
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 30px;
+        width: 100%;
+        max-width: 400px;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 24px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      select, textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-repeat: no-repeat;
+        background-position-x: 95%;
+        background-position-y: 50%;
+      }
+      textarea {
+        background-image: none;
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+      }
+      select:focus, textarea:focus {
+        border-color: #0056b3;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0,86,179,0.2);
+      }
+      .toggle-container {
+        display: flex;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid #ccc;
+        margin-top: 5px;
+      }
+      .toggle-option {
+        flex: 1;
+        text-align: center;
+      }
+      .toggle-option input {
+        display: none;
+      }
+      .toggle-option label {
+        display: block;
+        padding: 12px;
+        margin: 0;
+        cursor: pointer;
+        background-color: #f8f9fa;
+        color: #555;
+        font-weight: bold;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+      .toggle-option input:checked + label {
+        color: white;
+      }
+      #type-positive:checked + label {
+        background-color: #28a745;
+        border-color: #28a745;
+      }
+      #type-negative:checked + label {
+        background-color: #dc3545;
+        border-color: #dc3545;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      button:hover {
+        background-color: #004494;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .message {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        display: none;
+        font-weight: bold;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      #loader {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        vertical-align: middle;
+        margin-right: 10px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .spinner-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      }
+      .initial-loader {
+        border: 4px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 4px solid #0056b3;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      .nav-button {
+          margin-bottom: 10px;
+      }
+      .back-btn {
+          background-color: #6c757d;
+          margin-bottom: 20px;
+      }
+      .back-btn:hover {
+          background-color: #5a6268;
+      }
+      .timer-display {
+          font-size: 32px;
+          text-align: center;
+          margin: 20px 0;
+          font-family: monospace;
+      }
+      .checklist {
+          margin-bottom: 20px;
+      }
+      .checklist label {
+          display: flex;
+          align-items: center;
+          font-weight: normal;
+          font-size: 16px;
+      }
+      .checklist input[type="checkbox"] {
+          margin-right: 10px;
+      }
+      .timer-btns {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+      }
+      .timer-btns button {
+          padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background-container">
+      <div class="bg-image bg-1"></div>
+      <div class="bg-image bg-2"></div>
+      <div class="bg-image bg-3"></div>
+    </div>
+
+    <div class="container">
+
+      <div id="loading-area" class="spinner-container" style="display: block; text-align: center;">
+        <div class="initial-loader"></div>
+        <p style="color: #666; font-size: 14px;">Loading...</p>
+      </div>
+
+      <!-- LANDING PAGE -->
+      <div id="landing-view" style="display: none;">
+          <h2>Welcome</h2>
+          <p style="text-align: center; color: #555; margin-bottom: 30px;">Please select an option to continue:</p>
+          <button class="nav-button" onclick="selectPath('jso-tracking')">Job Safety Observation</button>
+          <button class="nav-button" onclick="selectPath('conversations')">Conversations</button>
+      </div>
+
+      <!-- JSO TRACKING PATH (PATH 1) -->
+      <div id="jso-tracking-view" style="display: none;">
+          <button class="back-btn" onclick="goBack('landing-view')">← Back</button>
+          <h2>Job Safety Observation</h2>
+
+          <div class="form-group">
+            <label for="jso-leader">Select Leader</label>
+            <select id="jso-leader" name="jso-leader" required>
+              <option value="" disabled selected>Select a Leader...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="jso-associate">Select Associate</label>
+            <select id="jso-associate" name="jso-associate" required disabled>
+              <option value="" disabled selected>First select a Leader</option>
+            </select>
+          </div>
+
+          <div class="timer-display" id="stopwatch">00:00</div>
+
+          <div class="timer-btns">
+            <button type="button" id="startTimerBtn" onclick="startTimer()" style="background-color: #28a745;">Start</button>
+            <button type="button" id="stopTimerBtn" onclick="stopTimer()" style="background-color: #dc3545;" disabled>Stop</button>
+          </div>
+
+          <div class="checklist">
+              <label><input type="checkbox" id="check-ppe"> Personal Protective Equipment Used</label>
+              <label><input type="checkbox" id="check-lifting"> Safe Lifting Techniques Followed</label>
+              <label><input type="checkbox" id="check-walkways"> Walkways Maintained Clear</label>
+          </div>
+
+          <button type="button" onclick="goToJsoNotes()">Continue to Notes</button>
+      </div>
+
+      <!-- JSO NOTES VIEW (PATH 1 CONTINUED) -->
+      <div id="jso-notes-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('jso-tracking-view')">← Back</button>
+        <h2>Observation Notes</h2>
+
+        <form id="jsoPdfForm">
+            <div class="form-group">
+              <label for="jso-notes">Observation Notes</label>
+              <textarea id="jso-notes" name="jso-notes" placeholder="Detailed notes about the observation..." required></textarea>
+            </div>
+
+            <button type="submit" id="submitPdfBtn">Submit & Send PDF</button>
+        </form>
+      </div>
+
+
+      <!-- CONVERSATIONS PATH (PATH 2 - Original Form) -->
+      <div id="conversations-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('landing-view')">← Back</button>
+        <h2>Conversations</h2>
+
+        <form id="jsoForm">
+
+            <div class="form-group">
+            <label for="topic">Topic</label>
+            <select id="topic" name="topic" required>
+                <option value="" disabled selected>Select a Topic...</option>
+                <option value="Safety">Safety</option>
+                <option value="Productivity">Productivity</option>
+                <option value="Quality">Quality</option>
+            </select>
+            </div>
+
+            <div class="form-group">
+            <label for="leader">Select Leader</label>
+            <select id="leader" name="leader" required>
+                <option value="" disabled selected>Select a Leader...</option>
+            </select>
+            </div>
+
+            <div class="form-group">
+            <label for="associate">Select Associate</label>
+            <select id="associate" name="associate" required disabled>
+                <option value="" disabled selected>First select a Leader</option>
+            </select>
+            </div>
+
+            <div class="form-group">
+            <label>Observation Type</label>
+            <div class="toggle-container">
+                <div class="toggle-option">
+                <input type="radio" id="type-positive" name="type" value="Positive" required>
+                <label for="type-positive">Positive</label>
+                </div>
+                <div class="toggle-option">
+                <input type="radio" id="type-negative" name="type" value="Negative">
+                <label for="type-negative">Negative</label>
+                </div>
+            </div>
+            </div>
+
+            <div class="form-group">
+            <label for="notes">Notes / Action Taken</label>
+            <textarea id="notes" name="notes" placeholder="Describe the observation here..." required></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">Submit Observation</button>
+        </form>
+      </div>
+
+      <!-- COACHING FORM SECTION -->
+      <form id="coachingForm" style="display: none;">
+        <h3>Coaching & Corrective Action</h3>
+
+        <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 14px; border: 1px solid #dee2e6; margin-bottom:20px;">
+          <strong style="color: #495057;">Associate:</strong> <span id="coachAssociateName"></span><br/>
+          <strong style="color: #495057;">Original Note:</strong> <span id="coachOriginalNote" style="font-style: italic;"></span>
+        </div>
+
+        <div id="dynamicDropdownContainer">
+          <!-- The correct dropdown (Safety, Productivity, Quality) will be injected here via JavaScript -->
+        </div>
+
+        <div class="form-group">
+          <label for="associatePerspective">Associate's Perspective</label>
+          <textarea id="associatePerspective" placeholder="What did the associate say?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="actionPlan">Agreed Action Plan</label>
+          <textarea id="actionPlan" placeholder="How to be better in the future..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="leaderNotes">Leader Coaching Notes</label>
+          <textarea id="leaderNotes" placeholder="Leader's final thoughts..." required></textarea>
+        </div>
+
+        <input type="hidden" id="observationId" />
+
+        <button type="submit" id="submitCoachBtn">Submit Coaching Record</button>
+      </form>
+
+      <div id="messageArea" class="message"></div>
+    </div>
+
+    <script>
+      let staffHierarchy = {};
+      let timerInterval;
+      let seconds = 0;
+
+      // Initialization: Load leaders from server
+      document.addEventListener('DOMContentLoaded', function() {
+        // First check URL params to see if we are in coaching mode
+        google.script.url.getLocation(function(location) {
+          if (location.parameters.coaching && location.parameters.coaching[0] === 'true') {
+            document.getElementById('loading-area').style.display = 'none';
+            document.getElementById('coachingForm').style.display = 'block';
+
+            // Populate static read-only info from URL
+            const obsId = location.parameters.id ? location.parameters.id[0] : '';
+            const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
+            const note = location.parameters.note ? location.parameters.note[0] : '';
+            const topic = location.parameters.topic ? location.parameters.topic[0] : 'Safety';
+
+            document.getElementById('observationId').value = obsId;
+            document.getElementById('coachAssociateName').textContent = assoc;
+            document.getElementById('coachOriginalNote').textContent = note; // getLocation already decodes it
+
+            const container = document.getElementById('dynamicDropdownContainer');
+
+            if (topic === 'Productivity') {
+              container.innerHTML = \`
+                <div class="form-group">
+                  <label for="policyViolated">Productivity / Efficiency Observation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Productivity Observation...</option>
+                    <option value="Follow standard process. Stick to approved SOPs and use the correct tools.">1. Follow standard process. Stick to approved SOPs and use the correct tools.</option>
+                    <option value="Maintain pace and focus. Stay on task to meet production targets.">2. Maintain pace and focus. Stay on task to meet production targets.</option>
+                    <option value="Workspace organization (5S). Keep your area clean to reduce wasted movement.">3. Workspace organization (5S). Keep your area clean to reduce wasted movement.</option>
+                    <option value="Communicate delays. Promptly report bottlenecks or equipment downtime.">4. Communicate delays. Promptly report bottlenecks or equipment downtime.</option>
+                    <option value="Resource management. Complete required tracking and avoid wasting materials.">5. Resource management. Complete required tracking and avoid wasting materials.</option>
+                  </select>
+                </div>
+              \`;
+            } else if (topic === 'Quality') {
+              container.innerHTML = \`
+                <div class="form-group">
+                  <label for="policyViolated">Quality / Standard Violation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Quality Issue...</option>
+                    <option value="Care: Have care in what you do, execute with excellence.">1. Care: Have care in what you do, execute with excellence.</option>
+                    <option value="Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers.">2. Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers.</option>
+                    <option value="Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY.">3. Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY.</option>
+                    <option value="TeamWork: Ensure all teammates are following safety and team lift protocols.">4. TeamWork: Ensure all teammates are following safety and team lift protocols.</option>
+                    <option value="Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work.">5. Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work.</option>
+                  </select>
+                </div>
+              \`;
+            } else {
+              // Default to Safety
+              container.innerHTML = \`
+                <div class="form-group">
+                  <label for="policyViolated">Policy / Safety Rule Violated</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Rule Violated...</option>
+                    <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+                    <option value="Cut safely. Ensure you are wearing safety gloves...">2. Cut safely. Ensure you are wearing safety gloves...</option>
+                    <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+                    <option value="Use walkways. Pedestrians must use designated walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+                    <option value="Lift smart. Use proper lifting techniques...">5. Lift smart. Use proper lifting techniques...</option>
+                    <option value="Report incidents. Incidents must be reported immediately.">6. Report incidents. Incidents must be reported immediately.</option>
+                    <option value="Be fit for work. Before starting work, ensure you are ready...">7. Be fit for work. Before starting work, ensure you are ready...</option>
+                    <option value="Be aware of moving vehicles. Watch out for moving equipment...">8. Be aware of moving vehicles. Watch out for moving equipment...</option>
+                    <option value="Stay aware. Always pay attention to your surroundings.">9. Stay aware. Always pay attention to your surroundings.</option>
+                    <option value="Think safety. Think safe, act safe and be safe!">10. Think safety. Think safe, act safe and be safe!</option>
+                  </select>
+                </div>
+              \`;
+            }
+          } else {
+             // Standard Flow: Load hierarchy for main app
+            google.script.run
+              .withSuccessHandler(populateLeaders)
+              .withFailureHandler(showInitError)
+              .getHierarchy();
+          }
+        });
+      });
+
+      function populateLeaders(data) {
+        staffHierarchy = data;
+        const leaderSelect = document.getElementById('leader');
+        const jsoLeaderSelect = document.getElementById('jso-leader');
+
+        // Hide loader, show landing page
+        document.getElementById('loading-area').style.display = 'none';
+        document.getElementById('landing-view').style.display = 'block';
+
+        if (Object.keys(staffHierarchy).length === 0) {
+           showInitError("No staff data found in the Attendance Sheet.");
+           return;
+        }
+
+        // Add leaders to dropdowns
+        const leaders = Object.keys(staffHierarchy).sort();
+        leaders.forEach(leader => {
+          const option1 = document.createElement('option');
+          option1.value = leader;
+          option1.textContent = leader;
+          leaderSelect.appendChild(option1);
+
+          const option2 = document.createElement('option');
+          option2.value = leader;
+          option2.textContent = leader;
+          jsoLeaderSelect.appendChild(option2);
+        });
+
+        // Add event listeners to update associates when leader changes
+        leaderSelect.addEventListener('change', () => updateAssociates('leader', 'associate'));
+        jsoLeaderSelect.addEventListener('change', () => updateAssociates('jso-leader', 'jso-associate'));
+      }
+
+      function updateAssociates(leaderSelectId, associateSelectId) {
+        const leaderSelect = document.getElementById(leaderSelectId);
+        const associateSelect = document.getElementById(associateSelectId);
+        const selectedLeader = leaderSelect.value;
+
+        // Clear current options
+        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
+
+        if (selectedLeader && staffHierarchy[selectedLeader]) {
+          const associates = staffHierarchy[selectedLeader];
+          associates.forEach(associate => {
+            const option = document.createElement('option');
+            option.value = associate;
+            option.textContent = associate;
+            associateSelect.appendChild(option);
+          });
+          associateSelect.disabled = false;
+        } else {
+          associateSelect.disabled = true;
+          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+      }
+
+      // Navigation Logic
+      function hideAllViews() {
+          document.getElementById('landing-view').style.display = 'none';
+          document.getElementById('jso-tracking-view').style.display = 'none';
+          document.getElementById('jso-notes-view').style.display = 'none';
+          document.getElementById('conversations-view').style.display = 'none';
+          document.getElementById('messageArea').style.display = 'none';
+      }
+
+      function selectPath(path) {
+          hideAllViews();
+          document.getElementById(path + '-view').style.display = 'block';
+
+          // Log path selection
+          google.script.run.logActivity("Selected Path: " + path);
+      }
+
+      function goBack(viewId) {
+          hideAllViews();
+          document.getElementById(viewId).style.display = 'block';
+      }
+
+      function goToJsoNotes() {
+          const leader = document.getElementById('jso-leader').value;
+          const associate = document.getElementById('jso-associate').value;
+          const msg = document.getElementById('messageArea');
+
+          if (!leader || !associate) {
+              msg.textContent = "Please select a Leader and Associate.";
+              msg.className = "message error";
+              msg.style.display = "block";
+              return;
+          }
+
+          stopTimer(); // Ensure timer is stopped
+          hideAllViews();
+          document.getElementById('jso-notes-view').style.display = 'block';
+      }
+
+      // Timer Logic
+      function updateTimerDisplay() {
+          const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+          const secs = (seconds % 60).toString().padStart(2, '0');
+          document.getElementById('stopwatch').textContent = \`\${mins}:\${secs}\`;
+      }
+
+      function startTimer() {
+          document.getElementById('startTimerBtn').disabled = true;
+          document.getElementById('stopTimerBtn').disabled = false;
+          timerInterval = setInterval(() => {
+              seconds++;
+              updateTimerDisplay();
+          }, 1000);
+      }
+
+      function stopTimer() {
+          document.getElementById('startTimerBtn').disabled = false;
+          document.getElementById('stopTimerBtn').disabled = true;
+          clearInterval(timerInterval);
+      }
+
+      function showInitError(error) {
+        document.getElementById('loading-area').style.display = 'none';
+        const msg = document.getElementById('messageArea');
+        msg.textContent = "Error loading staff data: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+
+      // Conversations Form Submission (Path 2)
+      document.getElementById('jsoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        // Validate form
+        const topic = document.getElementById('topic').value;
+        const leader = document.getElementById('leader').value;
+        const associate = document.getElementById('associate').value;
+        const typePositive = document.getElementById('type-positive').checked;
+        const typeNegative = document.getElementById('type-negative').checked;
+        const notes = document.getElementById('notes').value;
+
+        if (!topic || !leader || !associate || (!typePositive && !typeNegative) || !notes.trim()) {
+          msg.textContent = "Please fill out all fields.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        const type = typePositive ? 'Positive' : 'Negative';
+
+        // Prepare data
+        const data = {
+          topic: topic,
+          leader: leader,
+          associate: associate,
+          type: type,
+          notes: notes
+        };
+
+        // UI Feedback
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        // Send to server
+        google.script.run
+          .withSuccessHandler(() => onSuccess('jsoForm', 'submitBtn', 'Observation successfully recorded!'))
+          .withFailureHandler((err) => onError(err, 'submitBtn', 'Submit Observation'))
+          .submitObservation(data);
+      });
+
+      // JSO PDF Form Submission (Path 1)
+      document.getElementById('jsoPdfForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitPdfBtn');
+        const msg = document.getElementById('messageArea');
+
+        const leader = document.getElementById('jso-leader').value;
+        const associate = document.getElementById('jso-associate').value;
+        const notes = document.getElementById('jso-notes').value;
+
+        if (!notes.trim()) {
+          msg.textContent = "Please fill out observation notes.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        const data = {
+            leader: leader,
+            associate: associate,
+            duration: document.getElementById('stopwatch').textContent,
+            ppe: document.getElementById('check-ppe').checked,
+            safeLifting: document.getElementById('check-lifting').checked,
+            clearWalkways: document.getElementById('check-walkways').checked,
+            notes: notes
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        google.script.run
+          .withSuccessHandler(() => {
+              onSuccess('jsoPdfForm', 'submitPdfBtn', 'JSO Report generated and emailed successfully!');
+              // Reset tracking view specifics
+              clearInterval(timerInterval);
+              seconds = 0;
+              updateTimerDisplay();
+              document.getElementById('check-ppe').checked = false;
+              document.getElementById('check-lifting').checked = false;
+              document.getElementById('check-walkways').checked = false;
+              document.getElementById('jso-associate').disabled = true;
+              document.getElementById('jso-associate').innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+              document.getElementById('jso-leader').value = "";
+              setTimeout(() => selectPath('landing'), 4000);
+          })
+          .withFailureHandler((err) => onError(err, 'submitPdfBtn', 'Submit & Send PDF'))
+          .submitJobSafetyObservation(data);
+      });
+
+
+      // Coaching Form Submission
+      document.getElementById('coachingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitCoachBtn');
+        const msg = document.getElementById('messageArea');
+
+        const data = {
+          id: document.getElementById('observationId').value,
+          policy: document.getElementById('policyViolated').value,
+          perspective: document.getElementById('associatePerspective').value,
+          actionPlan: document.getElementById('actionPlan').value,
+          leaderNotes: document.getElementById('leaderNotes').value
+        };
+
+        if (!data.id || !data.policy || !data.perspective.trim() || !data.actionPlan.trim() || !data.leaderNotes.trim()) {
+          msg.textContent = "Please fill out all fields.";
+          msg.className = "message error";
+          msg.style.display = "block";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+        google.script.run
+          .withSuccessHandler(function() {
+             document.getElementById('coachingForm').reset();
+             document.getElementById('coachingForm').style.display = 'none';
+             msg.textContent = "Coaching record successfully saved! You may close this tab.";
+             msg.className = "message success";
+             msg.style.display = "block";
+          })
+          .withFailureHandler(function(error) {
+             btn.disabled = false;
+             btn.textContent = 'Submit Coaching Record';
+             msg.textContent = error.message || "An error occurred.";
+             msg.className = "message error";
+             msg.style.display = "block";
+          })
+          .submitCoaching(data);
+      });
+
+      function onSuccess(formId, btnId, successMsg) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+
+        // Reset form
+        document.getElementById(formId).reset();
+
+        if(formId === 'jsoForm') {
+            document.getElementById('associate').disabled = true;
+            document.getElementById('associate').innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+
+        // Restore button
+        btn.disabled = false;
+        btn.textContent = btnId === 'submitPdfBtn' ? 'Submit & Send PDF' : 'Submit Observation';
+
+        // Show success message
+        msg.textContent = successMsg;
+        msg.className = "message success";
+        msg.style.display = "block";
+
+        // Hide message after 4 seconds
+        setTimeout(() => {
+          msg.style.display = "none";
+        }, 4000);
+      }
+
+      function onError(error, btnId, defaultText) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+
+        // Restore button
+        btn.disabled = false;
+        btn.textContent = defaultText;
+
+        // Show error message
+        msg.textContent = "Error: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+    </script>
+  </body>
 </html>
