@@ -1,0 +1,766 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div class="background-container">
+      <div class="bg-image bg-1"></div>
+      <div class="bg-image bg-2"></div>
+      <div class="bg-image bg-3"></div>
+    </div>
+
+
+    <div class="container">
+
+      <div id="messageArea" class="message"></div>
+
+
+      <div id="loading-area" class="spinner-container" style="display: block; text-align: center;">
+        <div class="initial-loader"></div>
+        <p style="color: #666; font-size: 14px;">Loading...</p>
+      </div>
+
+
+      <div id="landing-view" style="display: none;">
+          <h1 style="text-align: center; color: #0056b3; margin-top: 0;">Crate & Barrel Tracker</h1>
+          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select your name and your associate below to begin.</p>
+
+          <div class="form-group">
+            <label>Observing Leader:</label>
+            <select id="global-leader" onchange="updateGlobalAssociates()">
+              <option value="" disabled selected>Loading Leaders...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Associate:</label>
+            <select id="global-associate" disabled>
+              <option value="" disabled selected>Select a Leader first</option>
+            </select>
+          </div>
+
+
+          <div class="split-buttons">
+            <button class="nav-button" onclick="selectPath('jso-tracking')">Job Safety Observation</button>
+            <button class="nav-button" onclick="selectPath('conversations')">Conversations</button>
+          </div>
+      </div>
+
+
+      <div id="jso-tracking-view" style="display: none;">
+          <button class="back-btn" onclick="goBack('landing-view')" style="width:auto; padding: 5px 15px; float:left;">&larr; Back</button>
+          <div style="clear:both;"></div>
+          <h2>Job Safety Observation</h2>
+
+
+          <div class="form-group">
+            <label for="jso-leader">Select Leader</label>
+            <select id="jso-leader" name="jso-leader" onchange="updateAssociates('jso-leader', 'jso-associate')" required>
+              <option value="" disabled selected>Select a Leader...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="jso-associate">Select Associate</label>
+            <select id="jso-associate" name="jso-associate" required disabled>
+              <option value="" disabled selected>First select a Leader</option>
+            </select>
+          </div>
+
+
+          <div class="form-group">
+            <label>Function:</label>
+            <select id="jso-function" onchange="handleFunctionSelect()">
+              <option value="" disabled selected>Select a Function...</option>
+              <optgroup label="Pallet Movements">
+                <option value="Put away" data-uph="20" data-type="pallet">Put away</option>
+                <option value="Inbound Shuttle" data-uph="15" data-type="pallet">Inbound Shuttle</option>
+                <option value="Furniture Picking" data-uph="18" data-type="pallet">Furniture Picking</option>
+                <option value="Outbound Shuttle" data-uph="15" data-type="pallet">Outbound Shuttle</option>
+                <option value="Furniture Loading" data-uph="12" data-type="pallet">Furniture Loading</option>
+              </optgroup>
+              <optgroup label="Piece Movements">
+                <option value="Housewares Unloading" data-uph="150" data-type="piece">Housewares Unloading</option>
+                <option value="Returns" data-uph="45" data-type="piece">Returns</option>
+                <option value="Processing" data-uph="80" data-type="piece">Processing</option>
+                <option value="Rewrap" data-uph="30" data-type="piece">Rewrap</option>
+                <option value="HSW MC Store Picking" data-uph="120" data-type="piece">HSW MC Store Picking</option>
+                <option value="HSW BP Store Picking" data-uph="100" data-type="piece">HSW BP Store Picking</option>
+                <option value="DSS Labeling" data-uph="200" data-type="piece">DSS Labeling</option>
+                <option value="SS Packing" data-uph="85" data-type="piece">SS Packing</option>
+                <option value="PTS" data-uph="90" data-type="piece">PTS</option>
+                <option value="Home Delivery" data-uph="40" data-type="piece">Home Delivery</option>
+                <option value="HSW Loading" data-uph="110" data-type="piece">HSW Loading</option>
+              </optgroup>
+            </select>
+          </div>
+
+
+          <div id="uph-display" style="display:none; text-align:center; margin-bottom: 15px;">
+            <h3 style="margin:0; font-size:16px;">Expected UPH: <span id="uph-value" style="color:#0056b3;">0</span></h3>
+          </div>
+
+
+          <div class="timer-display" id="stopwatch">00:00</div>
+
+          <div class="timer-btns">
+            <button type="button" id="startTimerBtn" onclick="startTimer()" style="background-color: #28a745;">Start</button>
+            <button type="button" id="stopTimerBtn" onclick="stopTimer()" style="background-color: #dc3545;" disabled>Stop</button>
+          </div>
+
+
+          <div id="action-logging-area" style="display:none; margin-bottom: 20px;">
+            <div id="pallet-movement-area" style="display:none;">
+              <button type="button" onclick="logPalletMovement()" style="background-color:#17a2b8;">Log Pallet Movement</button>
+            </div>
+            <div id="piece-picking-area" style="display:none;">
+              <div class="form-group">
+                <input type="number" id="pieces-picked" placeholder="Enter number of pieces">
+              </div>
+              <button type="button" onclick="logPiecesPicked()" style="background-color:#17a2b8;">Log Pieces Picked</button>
+            </div>
+            <p id="last-log-msg" style="text-align:center; font-size:12px; color:#666; margin-top:5px;"></p>
+          </div>
+
+
+          <div class="checklist">
+              <label><input type="checkbox" id="check-ppe"> Personal Protective Equipment Used</label>
+              <label><input type="checkbox" id="check-lifting"> Safe Lifting Techniques Followed</label>
+              <label><input type="checkbox" id="check-walkways"> Walkways Maintained Clear</label>
+          </div>
+
+
+          <button type="button" onclick="goToJsoNotes()">Continue to Notes</button>
+      </div>
+
+
+      <div id="jso-notes-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('jso-tracking-view')">← Back</button>
+        <h2>Observation Notes</h2>
+
+
+        <form id="jsoPdfForm">
+            <div class="form-group">
+              <label for="jso-notes">Observation Notes</label>
+              <textarea id="jso-notes" name="jso-notes" placeholder="Detailed notes about the observation..." required></textarea>
+            </div>
+
+            <button type="submit" id="submitPdfBtn">Submit & Send PDF</button>
+        </form>
+      </div>
+
+
+
+
+      <div id="conversations-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('landing-view')">← Back</button>
+        <h2>Conversations</h2>
+
+        <form id="jsoForm">
+            <div class="form-group">
+              <label for="topic">Topic</label>
+              <select id="topic" name="topic" required>
+                  <option value="" disabled selected>Select a Topic...</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Productivity">Productivity</option>
+                  <option value="Quality">Quality</option>
+              </select>
+            </div>
+
+
+            <div class="form-group">
+              <label>Leader:</label>
+              <input type="text" id="conv-leader-display" readonly style="background-color:#e9ecef;">
+            </div>
+
+
+            <div class="form-group">
+              <label>Associate:</label>
+              <input type="text" id="conv-assoc-display" readonly style="background-color:#e9ecef;">
+            </div>
+
+
+            <div class="form-group">
+              <label>Observation Type</label>
+              <div class="toggle-container">
+                  <div class="toggle-option">
+                  <input type="radio" id="type-positive" name="type" value="Positive" required>
+                  <label for="type-positive">Positive</label>
+                  </div>
+                  <div class="toggle-option">
+                  <input type="radio" id="type-negative" name="type" value="Negative">
+                  <label for="type-negative">Negative</label>
+                  </div>
+              </div>
+            </div>
+
+
+            <div class="form-group">
+              <label for="notes">Notes / Action Taken</label>
+              <textarea id="notes" name="notes" placeholder="Describe the observation here..." required></textarea>
+            </div>
+
+
+            <button type="submit" id="submitBtn">Submit Observation</button>
+        </form>
+      </div>
+
+
+      <div id="coachingForm" style="display: none;">
+        <h2>Coaching / CCA Record</h2>
+        <p style="text-align: center; color: #555; font-size: 14px;">Complete this form after the coaching conversation.</p>
+
+        <form id="ccaFormRecord">
+            <input type="hidden" id="observationId" name="observationId">
+
+            <div class="form-group">
+              <label>Associate</label>
+              <div id="coachAssociateName" style="padding: 10px; background-color: #f8f9fa; border: 1px solid #ccc; border-radius: 4px; font-weight: bold;"></div>
+            </div>
+
+
+            <div class="form-group">
+              <label>Original Observation Note</label>
+              <div id="coachOriginalNote" style="padding: 10px; background-color: #f8f9fa; border: 1px solid #ccc; border-radius: 4px; font-style: italic; font-size: 14px;"></div>
+            </div>
+
+
+            <div id="dynamicDropdownContainer">
+              </div>
+
+
+            <div class="form-group">
+              <label for="associatePerspective">Associate's Perspective</label>
+              <textarea id="associatePerspective" required placeholder="What did the associate say during the conversation?"></textarea>
+            </div>
+
+
+            <div class="form-group">
+              <label for="actionPlan">Action Plan / Commitment</label>
+              <textarea id="actionPlan" required placeholder="What are the agreed next steps?"></textarea>
+            </div>
+
+
+            <div class="form-group">
+              <label for="leaderNotes">Leader Coaching Notes</label>
+              <textarea id="leaderNotes" required placeholder="Any additional thoughts or follow-up needed?"></textarea>
+            </div>
+
+
+            <button type="submit" id="submitCoachBtn">Submit Coaching Record</button>
+        </form>
+      </div>
+
+
+    </div> <script>
+      let staffHierarchy = {};
+      let functionsList = [];
+      let timerInterval;
+      let seconds = 0;
+      let isTimerRunning = false;
+      let currentFunctionType = '';
+
+      // Tracking data
+      let trackingLogs = [];
+      let lastLogSeconds = 0;
+
+
+      // Initialization: Load leaders from server or check URL params
+      document.addEventListener('DOMContentLoaded', function() {
+        google.script.url.getLocation(function(location) {
+          if (location.parameters.coaching && location.parameters.coaching[0] === 'true') {
+            // WE ARE IN DIRECT EMAIL LINK MODE
+            document.getElementById('loading-area').style.display = 'none';
+            document.getElementById('coachingForm').style.display = 'block';
+
+
+            const obsId = location.parameters.id ? location.parameters.id[0] : '';
+            const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
+            const note = location.parameters.note ? location.parameters.note[0] : '';
+            const topic = location.parameters.topic ? location.parameters.topic[0] : 'Safety';
+
+
+            document.getElementById('observationId').value = obsId;
+            document.getElementById('coachAssociateName').textContent = assoc;
+            document.getElementById('coachOriginalNote').textContent = note;
+
+
+            const container = document.getElementById('dynamicDropdownContainer');
+
+            if (topic === 'Productivity') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Productivity / Efficiency Observation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Productivity Observation...</option>
+                    <option value="Follow standard process.">1. Follow standard process. Stick to approved SOPs and use the correct tools.</option>
+                    <option value="Maintain pace and focus.">2. Maintain pace and focus. Stay on task to meet production targets.</option>
+                    <option value="Workspace organization (5S).">3. Workspace organization (5S). Keep your area clean to reduce wasted movement.</option>
+                    <option value="Communicate delays.">4. Communicate delays. Promptly report bottlenecks or equipment downtime.</option>
+                    <option value="Resource management.">5. Resource management. Complete required tracking and avoid wasting materials.</option>
+                  </select>
+                </div>
+              `;
+            } else if (topic === 'Quality') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Quality / Standard Violation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Quality Issue...</option>
+                    <option value="Care: Have care in what you do.">1. Care: Have care in what you do, execute with excellence.</option>
+                    <option value="Responsibility: It’s not just a box.">2. Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers.</option>
+                    <option value="Attentiveness: Be attentive.">3. Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY.</option>
+                    <option value="TeamWork: Ensure all teammates are following safety.">4. TeamWork: Ensure all teammates are following safety and team lift protocols.</option>
+                    <option value="Execute with Excellence: Take Ownership.">5. Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work.</option>
+                  </select>
+                </div>
+              `;
+            } else {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Policy / Safety Rule Violated</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Rule Violated...</option>
+                    <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+                    <option value="Cut safely.">2. Cut safely. Ensure you are wearing safety gloves...</option>
+                    <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+                    <option value="Use walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+                    <option value="Lift smart.">5. Lift smart. Use proper lifting techniques...</option>
+                    <option value="Report incidents.">6. Report incidents. Incidents must be reported immediately.</option>
+                  </select>
+                </div>
+              `;
+            }
+          } else {
+             // STANDARD APP MODE: Load hierarchy
+            google.script.run
+              .withSuccessHandler(function(data) {
+                 staffHierarchy = data;
+                 // Hide loader, show landing page
+                 document.getElementById('loading-area').style.display = 'none';
+                 document.getElementById('landing-view').style.display = 'block';
+                 populateGlobalLeaders();
+              })
+              .withFailureHandler(showInitError)
+              .getHierarchy();
+          }
+        });
+      });
+
+
+      function populateGlobalLeaders() {
+        const globalLeaderSelect = document.getElementById('global-leader');
+        const jsoLeaderSelect = document.getElementById('jso-leader');
+
+        if (Object.keys(staffHierarchy).length === 0) {
+           showInitError("No staff data found in the Attendance Sheet.");
+           return;
+        }
+
+
+        const leaders = Object.keys(staffHierarchy).sort();
+        leaders.forEach(leader => {
+          const option1 = document.createElement('option');
+          option1.value = leader;
+          option1.textContent = leader;
+          globalLeaderSelect.appendChild(option1);
+
+
+          const option2 = document.createElement('option');
+          option2.value = leader;
+          option2.textContent = leader;
+          if(jsoLeaderSelect) jsoLeaderSelect.appendChild(option2);
+        });
+      }
+
+
+      function updateGlobalAssociates() {
+        const leaderSelect = document.getElementById('global-leader');
+        const associateSelect = document.getElementById('global-associate');
+        const selectedLeader = leaderSelect.value;
+
+        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
+
+        if (selectedLeader && staffHierarchy[selectedLeader]) {
+          const associates = staffHierarchy[selectedLeader];
+          associates.forEach(associate => {
+            const option = document.createElement('option');
+            option.value = associate;
+            option.textContent = associate;
+            associateSelect.appendChild(option);
+          });
+          associateSelect.disabled = false;
+        } else {
+          associateSelect.disabled = true;
+          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+      }
+      function updateAssociates(leaderId, assocId) {
+        const leaderSelect = document.getElementById(leaderId);
+        const associateSelect = document.getElementById(assocId);
+        const selectedLeader = leaderSelect.value;
+
+        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
+
+        if (selectedLeader && staffHierarchy[selectedLeader]) {
+          const associates = staffHierarchy[selectedLeader];
+          associates.forEach(associate => {
+            const option = document.createElement('option');
+            option.value = associate;
+            option.textContent = associate;
+            associateSelect.appendChild(option);
+          });
+          associateSelect.disabled = false;
+        } else {
+          associateSelect.disabled = true;
+          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+      }
+
+
+      // Navigation Logic
+      function hideAllViews() {
+          document.getElementById('landing-view').style.display = 'none';
+          document.getElementById('jso-tracking-view').style.display = 'none';
+          document.getElementById('jso-notes-view').style.display = 'none';
+          document.getElementById('conversations-view').style.display = 'none';
+          document.getElementById('messageArea').style.display = 'none';
+      }
+
+
+      function selectPath(path) {
+          const leader = document.getElementById('global-leader').value;
+          const associate = document.getElementById('global-associate').value;
+
+
+          if (!leader || !associate) {
+              const msg = document.getElementById('messageArea');
+              msg.textContent = "Please select a Leader and Associate to begin.";
+              msg.className = "message error";
+              msg.style.display = "block";
+              return;
+          }
+
+
+          hideAllViews();
+          document.getElementById(path + '-view').style.display = 'block';
+
+
+          // Pre-fill the visual inputs on the Conversations page
+          if (path === 'conversations') {
+              document.getElementById('conv-leader-display').value = leader;
+              document.getElementById('conv-assoc-display').value = associate;
+          }
+      }
+
+
+      function goBack(viewId) {
+          hideAllViews();
+          document.getElementById(viewId).style.display = 'block';
+      }
+
+
+      function goToJsoNotes() {
+          const func = document.getElementById('jso-function').value;
+          if (!func) {
+              const msg = document.getElementById('messageArea');
+              msg.textContent = "Please select a Function.";
+              msg.className = "message error";
+              msg.style.display = "block";
+              return;
+          }
+
+
+          stopTimer();
+          hideAllViews();
+          document.getElementById('jso-notes-view').style.display = 'block';
+      }
+
+
+      // Timer & JSO Logic
+      function handleFunctionSelect() {
+        const select = document.getElementById('jso-function');
+        const selectedOpt = select.options[select.selectedIndex];
+
+        if (selectedOpt.value) {
+            const uph = selectedOpt.getAttribute('data-uph');
+            currentFunctionType = selectedOpt.getAttribute('data-type');
+
+            document.getElementById('uph-value').innerText = uph;
+            document.getElementById('uph-display').style.display = 'block';
+            document.getElementById('startTimerBtn').style.display = 'inline-block';
+        }
+      }
+
+
+      function updateTimerDisplay() {
+          const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+          const secs = (seconds % 60).toString().padStart(2, '0');
+          document.getElementById('stopwatch').textContent = `${mins}:${secs}`;
+      }
+
+
+      function startTimer() {
+          const func = document.getElementById('jso-function').value;
+          if(!func) return;
+
+          isTimerRunning = true;
+          document.getElementById('startTimerBtn').style.display = 'none';
+          document.getElementById('stopTimerBtn').disabled = false;
+          document.getElementById('jso-function').disabled = true;
+
+          document.getElementById('action-logging-area').style.display = 'block';
+          if(currentFunctionType === 'pallet') {
+              document.getElementById('pallet-movement-area').style.display = 'block';
+              document.getElementById('piece-picking-area').style.display = 'none';
+          } else {
+              document.getElementById('pallet-movement-area').style.display = 'none';
+              document.getElementById('piece-picking-area').style.display = 'block';
+          }
+
+
+          timerInterval = setInterval(() => {
+              seconds++;
+              updateTimerDisplay();
+          }, 1000);
+      }
+
+
+      function formatTime(s) {
+          const mins = Math.floor(s / 60).toString().padStart(2, '0');
+          const secs = (s % 60).toString().padStart(2, '0');
+          return `${mins}:${secs}`;
+      }
+
+
+      function logPalletMovement() {
+          const diffSeconds = seconds - lastLogSeconds;
+          lastLogSeconds = seconds;
+
+          trackingLogs.push({
+             type: 'Pallet Movement',
+             time: formatTime(seconds),
+             timeSinceLast: formatTime(diffSeconds)
+          });
+
+          document.getElementById('last-log-msg').textContent = `Logged movement at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
+      }
+
+
+      function logPiecesPicked() {
+          const piecesInput = document.getElementById('pieces-picked');
+          const count = parseInt(piecesInput.value, 10);
+
+
+          if(isNaN(count) || count <= 0) return;
+
+
+          const diffSeconds = seconds - lastLogSeconds;
+          lastLogSeconds = seconds;
+
+          trackingLogs.push({
+             type: 'Pieces Picked',
+             count: count,
+             time: formatTime(seconds),
+             timeSinceLast: formatTime(diffSeconds)
+          });
+
+          document.getElementById('last-log-msg').textContent = `Logged ${count} pieces at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
+          piecesInput.value = '';
+      }
+
+
+      function stopTimer() {
+          isTimerRunning = false;
+          document.getElementById('stopTimerBtn').disabled = true;
+          document.getElementById('action-logging-area').style.display = 'none';
+          clearInterval(timerInterval);
+      }
+
+
+      function showInitError(error) {
+        document.getElementById('loading-area').style.display = 'none';
+        const msg = document.getElementById('messageArea');
+        msg.textContent = "Error loading staff data: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+
+
+      // SUBMISSIONS
+
+
+      // 1. Conversations Form Submission
+      document.getElementById('jsoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        const topic = document.getElementById('topic').value;
+        const leader = document.getElementById('global-leader').value;
+        const associate = document.getElementById('global-associate').value;
+        const typePositive = document.getElementById('type-positive').checked;
+        const notes = document.getElementById('notes').value;
+
+
+        const type = typePositive ? 'Positive' : 'Negative';
+
+
+        const data = {
+          topic: topic,
+          leader: leader,
+          associate: associate,
+          type: type,
+          notes: notes
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+
+        google.script.run
+          .withSuccessHandler(() => onSuccess('jsoForm', 'submitBtn', 'Observation successfully recorded!'))
+          .withFailureHandler((err) => onError(err, 'submitBtn', 'Submit Observation'))
+          .submitObservation(data);
+      });
+
+
+      // 2. JSO PDF Form Submission
+      document.getElementById('jsoPdfForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitPdfBtn');
+        const msg = document.getElementById('messageArea');
+
+        const leader = document.getElementById('global-leader').value;
+        const associate = document.getElementById('global-associate').value;
+        const notes = document.getElementById('jso-notes').value;
+
+
+        let formattedLogs = trackingLogs.map(log => {
+            if(log.type === 'Pallet Movement') {
+                return `<li>Movement at ${log.time} (Time since last: ${log.timeSinceLast})</li>`;
+            } else {
+                return `<li>Picked ${log.count} pieces at ${log.time} (Time since last: ${log.timeSinceLast})</li>`;
+            }
+        }).join('');
+
+
+        if (trackingLogs.length === 0) formattedLogs = "<li>No activities logged.</li>";
+
+
+        const func = document.getElementById('jso-function').value;
+        const uphData = document.getElementById('uph-value').textContent;
+
+
+        const combinedNotes = `
+            <h4>Function: ${func} (Expected UPH: ${uphData})</h4>
+            <h4>Activity Logs:</h4>
+            <ul>${formattedLogs}</ul>
+            <h4>Final Notes:</h4>
+            <p>${notes}</p>
+        `;
+
+
+        const data = {
+            leader: leader,
+            associate: associate,
+            duration: document.getElementById('stopwatch').textContent,
+            ppe: document.getElementById('check-ppe').checked,
+            safeLifting: document.getElementById('check-lifting').checked,
+            clearWalkways: document.getElementById('check-walkways').checked,
+            notes: combinedNotes
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+
+
+        google.script.run
+          .withSuccessHandler(() => {
+              onSuccess('jsoPdfForm', 'submitPdfBtn', 'JSO Report generated and emailed successfully!');
+              setTimeout(() => { location.reload(); }, 3000); // Reload the app to clean the state
+          })
+          .withFailureHandler((err) => onError(err, 'submitPdfBtn', 'Submit & Send PDF'))
+          .processJSO(data); // <--- Using the new PDF function from earlier
+      });
+
+
+      // 3. Direct Link CCA / Coaching Submission
+      document.getElementById('ccaFormRecord').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitCoachBtn');
+        const msg = document.getElementById('messageArea');
+
+        const data = {
+          id: document.getElementById('observationId').value,
+          policy: document.getElementById('policyViolated').value,
+          perspective: document.getElementById('associatePerspective').value,
+          actionPlan: document.getElementById('actionPlan').value,
+          leaderNotes: document.getElementById('leaderNotes').value
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+
+
+        google.script.run
+          .withSuccessHandler(function() {
+             document.getElementById('coachingForm').reset();
+             document.getElementById('coachingForm').style.display = 'none';
+             msg.textContent = "Coaching record successfully saved! You may close this tab.";
+             msg.className = "message success";
+             msg.style.display = "block";
+          })
+          .withFailureHandler(function(error) {
+             btn.disabled = false;
+             btn.textContent = 'Submit Coaching Record';
+             msg.textContent = error.message || "An error occurred.";
+             msg.className = "message error";
+             msg.style.display = "block";
+          })
+          .submitCoaching(data);
+      });
+
+
+      // Utilities
+      function onSuccess(formId, btnId, successMsg) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+        document.getElementById(formId).reset();
+
+        btn.disabled = false;
+        btn.textContent = btnId === 'submitPdfBtn' ? 'Submit & Send PDF' : 'Submit Observation';
+
+        msg.textContent = successMsg;
+        msg.className = "message success";
+        msg.style.display = "block";
+
+        setTimeout(() => { msg.style.display = "none"; }, 4000);
+      }
+
+
+      function onError(error, btnId, defaultText) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+
+        btn.disabled = false;
+        btn.textContent = defaultText;
+
+        msg.textContent = "Error: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+    </script>
+  </body>
+</html>
