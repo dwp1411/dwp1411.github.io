@@ -107,12 +107,6 @@
 
           <div class="timer-display" id="stopwatch">00:00</div>
 
-          <div class="timer-btns">
-            <button type="button" id="startTimerBtn" onclick="startTimer()" style="background-color: #28a745;">Start</button>
-            <button type="button" id="stopTimerBtn" onclick="stopTimer()" style="background-color: #dc3545;" disabled>Stop</button>
-          </div>
-
-
           <div id="action-logging-area" style="display:none; margin-bottom: 20px;">
             <div id="pallet-movement-area" style="display:none;">
               <button type="button" onclick="logPalletMovement()" style="background-color:#17a2b8;">Log Pallet Movement</button>
@@ -125,6 +119,14 @@
             </div>
             <p id="last-log-msg" style="text-align:center; font-size:12px; color:#666; margin-top:5px;"></p>
           </div>
+
+          <div class="timer-btns">
+            <button type="button" id="startTimerBtn" onclick="startTimer()" style="background-color: #28a745;">Start</button>
+            <button type="button" id="stopTimerBtn" onclick="stopTimer()" style="background-color: #dc3545;" disabled>Stop</button>
+          </div>
+
+
+
 
 
           <div class="checklist">
