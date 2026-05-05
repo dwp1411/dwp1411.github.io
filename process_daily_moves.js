@@ -129,3 +129,110 @@ function processDailyMoves() {
 
   console.log(`Successfully updated target sheet for date ${Utilities.formatDate(yesterday, tz, "M/d/yy")}.`);
 }
+
+/**
+ * Run this function manually ONE TIME to process all historical files
+ * currently residing in the Drive folder and backfill the target sheet.
+ */
+function backfillHistoricalMoves() {
+  const FOLDER_ID = "1hy_IFqn9rHXwp5aYcpXX-tHJ5GZUtwJl";
+  const TARGET_SPREADSHEET_ID = "1R0L_etmd77M5xC6hlobr0h5WnQFVkHbSavaPSYCYdRc";
+  const TARGET_SHEET_NAME = "Sheet1";
+  const TARGET_LOCATION = "50900101";
+
+  const targetSpreadsheet = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+  const targetSheet = targetSpreadsheet.getSheetByName(TARGET_SHEET_NAME);
+
+  if (!targetSheet) {
+    console.error(`Tab "${TARGET_SHEET_NAME}" not found in target spreadsheet.`);
+    return;
+  }
+
+  const lastCol = targetSheet.getLastColumn();
+  if (lastCol < 1) {
+    console.error("Target sheet is empty.");
+    return;
+  }
+
+  // Cache the header row mapping dates to column indices
+  const headerValues = targetSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const colMap = {};
+
+  for (let i = 0; i < headerValues.length; i++) {
+    const cellValue = headerValues[i];
+    let d = null;
+    if (cellValue instanceof Date) {
+      d = cellValue;
+    } else if (cellValue) {
+      d = new Date(cellValue);
+    }
+
+    if (d && !isNaN(d.getTime())) {
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      colMap[dateKey] = i + 1; // 1-based index
+    }
+  }
+
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+  const files = folder.getFiles();
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const fileName = file.getName();
+
+    // Check if filename matches expected pattern, e.g. whmovrpt191_2026-05-01
+    const match = fileName.match(/whmovrpt(191|199)_(\d{4}-\d{2}-\d{2})/);
+    if (!match) continue;
+
+    const site = match[1];
+    const fileDateStr = match[2]; // e.g. "2026-05-01"
+
+    // Parse the date from the filename (assumes YYYY-MM-DD local time)
+    const fileParts = fileDateStr.split('-');
+    const fileDate = new Date(fileParts[0], fileParts[1] - 1, fileParts[2]);
+
+    // The data inside applies to the day before the filename date
+    const targetDate = new Date(fileDate.getTime());
+    targetDate.setDate(fileDate.getDate() - 1);
+
+    const dateKey = `${targetDate.getFullYear()}-${targetDate.getMonth()}-${targetDate.getDate()}`;
+    const targetColIndex = colMap[dateKey];
+
+    if (!targetColIndex) {
+      console.warn(`Target column for date ${targetDate.toLocaleDateString()} not found in Row 1. Skipping file ${fileName}.`);
+      continue;
+    }
+
+    let sourceSpreadsheet;
+    try {
+      sourceSpreadsheet = SpreadsheetApp.open(file);
+    } catch (e) {
+      console.error(`Error opening file ${fileName}: ${e.message}. Ensuring it's a valid Google Sheet.`);
+      continue;
+    }
+
+    const sourceSheet = sourceSpreadsheet.getSheets()[0];
+    const data = sourceSheet.getDataRange().getValues();
+    let sum = 0;
+
+    for (let r = 1; r < data.length; r++) {
+      const row = data[r];
+      if (row.length > 23) {
+        if (String(row[23]) === TARGET_LOCATION) {
+          const pieces = parseFloat(row[15]);
+          if (!isNaN(pieces)) {
+            sum += pieces;
+          }
+        }
+      }
+    }
+
+    // Write sum to the correct cell
+    const targetRow = (site === "191") ? 2 : 3;
+    targetSheet.getRange(targetRow, targetColIndex).setValue(sum);
+
+    console.log(`Backfilled ${fileName}. Written to Row ${targetRow}, Col ${targetColIndex} (Date: ${targetDate.toLocaleDateString()}) - Sum: ${sum}`);
+  }
+
+  console.log("Historical backfill completed.");
+}
