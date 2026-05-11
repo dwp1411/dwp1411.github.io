@@ -402,10 +402,38 @@ function processJSO(data) {
         </ul>
 
 
-        <h3 style="color: #333;">Observation Notes & Activity Log</h3>
+        <h3 style="color: #333;">Activity Log</h3>
+        <ul style="line-height: 1.6;">${data.activityLogs}</ul>
+
+        <h3 style="color: #333; margin-top: 20px;">Associate Feedback</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd; width: 80%;">Do you feel you can maintain the pace performed for your entire shift?</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${data.fbPace}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Do you feel you have all the necessary skills required to do the job?</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${data.fbSkills}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Do you feel the need for additional training in the prescribed methods or procedures?</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${data.fbTraining}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">Do you feel your work environment (Equipment, Facility, Layout, supplies) support the work you do?</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${data.fbEnvironment}</td>
+          </tr>
+        </table>
         <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #0056b3; margin-bottom: 20px;">
-          ${data.notes ? data.notes : "<em>No additional notes provided.</em>"}
+          <strong>Feedback Notes:</strong><br>
+          ${data.fbNotes}
         </div>
+
+        ${data.signature ? `
+        <div style="margin-top: 30px;">
+            <p style="margin-bottom: 5px;"><strong>Associate Signature:</strong></p>
+            <img src="${data.signature}" style="max-height: 100px; border: 1px solid #ddd;" alt="Signature">
+        </div>` : '<p><em>No signature provided.</em></p>'}
       </div>
     `;
 

@@ -139,13 +139,55 @@
 
       <div id="jso-notes-view" style="display: none;">
         <button class="back-btn" onclick="goBack('jso-tracking-view')">← Back</button>
-        <h2>Observation Notes</h2>
-
+        <h2>Associate Feedback</h2>
 
         <form id="jsoPdfForm">
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel you can maintain the pace performed for your entire shift?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-pace" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-pace" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel you have all the necessary skills required to do the job?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-skills" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-skills" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel the need for additional training in the prescribed methods or procedures?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-training" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-training" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel your work environment (Equipment, Facility, Layout, supplies) support the work you do?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-environment" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-environment" value="No"> No</label>
+                </div>
+            </div>
+
             <div class="form-group">
-              <label for="jso-notes">Observation Notes</label>
-              <textarea id="jso-notes" name="jso-notes" placeholder="Detailed notes about the observation..." required></textarea>
+              <label for="fb-notes">Is there anything that the company could do to help you be more productive in this operation?</label>
+              <div style="position: relative;">
+                  <textarea id="fb-notes" name="fb-notes" placeholder="Feedback notes..." style="width: 100%; padding-right: 40px; border: 1px solid var(--border); border-radius: 4px; min-height: 60px; padding:10px;"></textarea>
+                  <button type="button" onclick="startVoiceRecognition('fb-notes', this)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 18px; cursor: pointer;" title="Voice to Text">🎤</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+                <label>Associate Signature Acknowledgement:</label>
+                <div style="border: 2px solid #333; border-radius: 4px; background: white; margin-bottom: 5px;">
+                    <canvas id="signaturePad" width="400" height="150" style="width: 100%; height: 150px; touch-action: none;"></canvas>
+                </div>
+                <button type="button" onclick="clearSignature()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Clear Signature</button>
             </div>
 
             <button type="submit" id="submitPdfBtn">Submit & Send PDF</button>
@@ -392,7 +434,10 @@
                         <input type="checkbox" id="${checkId}" class="dynamic-checkbox" data-label="${item}" style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
                         ${item}
                     </label>
-                    <textarea id="${notesId}" class="dynamic-notes" placeholder="Notes for this check..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 60px; font-family: inherit; font-size: 13px;"></textarea>
+                    <div style="position: relative;">
+                        <textarea id="${notesId}" class="dynamic-notes" placeholder="Notes for this check..." style="width: 100%; padding: 8px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 60px; font-family: inherit; font-size: 13px;"></textarea>
+                        <button type="button" onclick="startVoiceRecognition('${notesId}', this)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 18px; cursor: pointer;" title="Voice to Text">🎤</button>
+                    </div>
                 </div>
               `;
               container.insertAdjacentHTML('beforeend', html);
@@ -618,6 +663,8 @@
           stopTimer();
           hideAllViews();
           document.getElementById('jso-notes-view').style.display = 'block';
+          setTimeout(initSignature, 100); // init after display is block
+          setTimeout(initSignature, 100); // init after display is block
       }
 
 
@@ -782,7 +829,7 @@
 
         const leader = document.getElementById('global-leader').value;
         const associate = document.getElementById('global-associate').value;
-        const notes = document.getElementById('jso-notes').value;
+
 
 
         let formattedLogs = trackingLogs.map(log => {
@@ -801,23 +848,45 @@
         const uphData = document.getElementById('uph-value').textContent;
 
 
-        const combinedNotes = `
-            <h4>Function: ${func} (Expected UPH: ${uphData})</h4>
-            <h4>Activity Logs:</h4>
-            <ul>${formattedLogs}</ul>
-            <h4>Final Notes:</h4>
-            <p>${notes}</p>
-        `;
 
+
+
+
+        const checklistResults = [];
+        document.querySelectorAll('.dynamic-check-item').forEach(item => {
+            const checkbox = item.querySelector('.dynamic-checkbox');
+            const noteArea = item.querySelector('.dynamic-notes');
+            if (checkbox) {
+               checklistResults.push({
+                   check: checkbox.getAttribute('data-label'),
+                   passed: checkbox.checked,
+                   notes: noteArea.value
+               });
+            }
+        });
+
+        const fbPace = document.querySelector('input[name="fb-pace"]:checked')?.value || "N/A";
+        const fbSkills = document.querySelector('input[name="fb-skills"]:checked')?.value || "N/A";
+        const fbTraining = document.querySelector('input[name="fb-training"]:checked')?.value || "N/A";
+        const fbEnvironment = document.querySelector('input[name="fb-environment"]:checked')?.value || "N/A";
+        const fbNotes = document.getElementById('fb-notes').value || "None";
+        const signatureBase64 = typeof signatureEmpty !== 'undefined' && !signatureEmpty && typeof canvas !== 'undefined' && canvas ? canvas.toDataURL("image/png") : null;
 
         const data = {
             leader: leader,
             associate: associate,
             duration: document.getElementById('stopwatch').textContent,
-            ppe: document.getElementById('check-ppe').checked,
-            safeLifting: document.getElementById('check-lifting').checked,
-            clearWalkways: document.getElementById('check-walkways').checked,
-            notes: combinedNotes
+            checklistResults: checklistResults,
+            function: func,
+            totalCount: totalCount,
+            totalSeconds: seconds,
+            activityLogs: formattedLogs,
+            fbPace: fbPace,
+            fbSkills: fbSkills,
+            fbTraining: fbTraining,
+            fbEnvironment: fbEnvironment,
+            fbNotes: fbNotes,
+            signature: signatureBase64
         };
 
 
