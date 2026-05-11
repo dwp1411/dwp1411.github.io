@@ -133,7 +133,7 @@
           <div id="dynamic-checklist-area"></div>
 
 
-          <button type="button" onclick="goToJsoNotes()">Continue to Notes</button>
+<button type="button" class="btn btn-jso" style="width: 100%; margin-top: 15px;" onclick="goToJsoNotes()">Continue to Associate Feedback</button>
       </div>
 
 
@@ -839,7 +839,7 @@
           const diffSeconds = seconds - lastLogSeconds;
           lastLogSeconds = seconds;
 
-          trackingLogs.push({
+          totalCount++; trackingLogs.push({
              type: 'Pallet Movement',
              time: formatTime(seconds),
              timeSinceLast: formatTime(diffSeconds)
@@ -860,7 +860,7 @@
           const diffSeconds = seconds - lastLogSeconds;
           lastLogSeconds = seconds;
 
-          trackingLogs.push({
+          totalCount += count; trackingLogs.push({
              type: 'Pieces Picked',
              count: count,
              time: formatTime(seconds),
@@ -986,6 +986,7 @@
             duration: document.getElementById('stopwatch').textContent,
             checklistResults: checklistResults,
             function: func,
+            type: currentFunctionType,
             totalCount: totalCount,
             totalSeconds: seconds,
             activityLogs: formattedLogs,
