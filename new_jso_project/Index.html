@@ -84,7 +84,8 @@
                 <option value="Furniture Loading" data-uph="12" data-type="pallet">Furniture Loading</option>
               </optgroup>
               <optgroup label="Piece Movements">
-                <option value="Housewares Unloading" data-uph="150" data-type="piece">Housewares Unloading</option>
+                <option value="Furniture Receiving" data-uph="50" data-type="piece">Furniture Receiving</option>
+                <option value="HSW Receiving" data-uph="150" data-type="piece">HSW Receiving</option>
                 <option value="Returns" data-uph="45" data-type="piece">Returns</option>
                 <option value="Processing" data-uph="80" data-type="piece">Processing</option>
                 <option value="Rewrap" data-uph="30" data-type="piece">Rewrap</option>
@@ -129,11 +130,7 @@
 
 
 
-          <div class="checklist">
-              <label><input type="checkbox" id="check-ppe"> Personal Protective Equipment Used</label>
-              <label><input type="checkbox" id="check-lifting"> Safe Lifting Techniques Followed</label>
-              <label><input type="checkbox" id="check-walkways"> Walkways Maintained Clear</label>
-          </div>
+          <div id="dynamic-checklist-area"></div>
 
 
           <button type="button" onclick="goToJsoNotes()">Continue to Notes</button>
@@ -261,6 +258,147 @@
     </div> <script>
       let staffHierarchy = {};
       let functionsList = [];
+
+      const checklistData = {
+  "Putaway": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Aisles Clear of Hazards",
+    "Inspect Pallets for Grade A",
+    "Correct Pallet Putaway (Arrows Up)"
+  ],
+  "Inbound Shuttle": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Inspect Pallets for Soundness"
+  ],
+  "Furniture Picking": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Using the proper technique for moving product",
+    "Keep Aisles Clear of Hazards",
+    "Proper Weight Distribution (Heavy on Bottom)",
+    "Inspect Boxes for Damage"
+  ],
+  "Outbound Shuttle": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Inspect Pallets for Grade A",
+    "Safe Trailer Loading"
+  ],
+  "Furniture Loading": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Using the proper technique for moving product",
+    "Inspect Pallets for Soundness",
+    "Safe Removal of Pallets/Trash"
+  ],
+  "HSW Receiving": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Furniture Receiving": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Using the proper technique for moving product",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Returns": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Rewrap": [
+    "Safe Lifting Techniques",
+    "Safe Utility Knife Use (Cut Away)",
+    "Handle Glass/Mirrors Gently",
+    "Keep Area Free of Tripping Hazards"
+  ],
+  "DSS Labeling": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Onto Conveyor",
+    "Discard Label Backings Immediately",
+    "Focused on Task Without Distraction",
+    "Organize & Clear Workspace"
+  ],
+  "SS Packing": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Discard Label Backings Immediately",
+    "Focused on Task Without Distraction",
+    "Organize & Clear Workspace"
+  ],
+  "PTS": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Maintain Safe, Steady Pace"
+  ],
+  "Home Delivery": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Using the proper technique for moving product",
+    "Correct Lane Organization & Prep"
+  ],
+  "HSW Loading": [
+    "Dock Door & Light Safety Check",
+    "Safe Driving & Speeds",
+    "Inspect Pallets for Grade A"
+  ],
+  "Processing": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ],
+  "HSW MC Store Picking": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ],
+  "HSW BP Store Picking": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ]
+};
+
+      function renderDynamicChecklist(funcName) {
+          const container = document.getElementById('dynamic-checklist-area');
+          container.innerHTML = ''; // clear existing
+
+          let items = checklistData[funcName];
+          if (!items) {
+              // Fallback default
+              items = ["Proper PPE Usage", "Safe Lifting Techniques", "Keep Area Clear of Hazards"];
+          }
+
+          items.forEach((item, index) => {
+              const checkId = 'check-' + index;
+              const notesId = 'notes-' + index;
+
+              const html = `
+                <div class="dynamic-check-item" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; cursor: pointer;">
+                        <input type="checkbox" id="${checkId}" class="dynamic-checkbox" data-label="${item}" style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        ${item}
+                    </label>
+                    <textarea id="${notesId}" class="dynamic-notes" placeholder="Notes for this check..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 60px; font-family: inherit; font-size: 13px;"></textarea>
+                </div>
+              `;
+              container.insertAdjacentHTML('beforeend', html);
+          });
+      }
+
       let timerInterval;
       let seconds = 0;
       let isTimerRunning = false;
@@ -495,6 +633,7 @@
             document.getElementById('uph-value').innerText = uph;
             document.getElementById('uph-display').style.display = 'block';
             document.getElementById('startTimerBtn').style.display = 'inline-block';
+            renderDynamicChecklist(selectedOpt.value);
         }
       }
 
