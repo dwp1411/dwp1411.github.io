@@ -21,8 +21,8 @@ function setupDatabase() {
 
     // Activity Log Tab
     const logSheet = newSpreadsheet.insertSheet('Activity Log');
-    const logHeaders = [['Timestamp', 'Action', 'User Email']];
-    logSheet.getRange(1, 1, 1, 3).setValues(logHeaders)
+    const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
+    logSheet.getRange(1, 1, 1, logHeaders[0].length).setValues(logHeaders)
          .setFontWeight('bold')
          .setBackground('#d9d9d9');
     logSheet.setFrozenRows(1);
@@ -78,8 +78,8 @@ function updateExistingDatabase() {
     let logSheet = dataSpreadsheet.getSheetByName('Activity Log');
     if (!logSheet) {
       logSheet = dataSpreadsheet.insertSheet('Activity Log');
-      const logHeaders = [['Timestamp', 'Action', 'User Email']];
-      logSheet.getRange(1, 1, 1, 3).setValues(logHeaders)
+      const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
+      logSheet.getRange(1, 1, 1, logHeaders[0].length).setValues(logHeaders)
            .setFontWeight('bold')
            .setBackground('#d9d9d9');
       logSheet.setFrozenRows(1);
@@ -96,13 +96,107 @@ function updateExistingDatabase() {
 }
 
 
-function logActivity(action) {
+function logActivity(data) {
   try {
     const dataSpreadsheet = SpreadsheetApp.openById(JSO_DATA_SHEET_ID);
-    const logSheet = dataSpreadsheet.getSheetByName('Activity Log');
-    if (logSheet) {
-      logSheet.appendRow([new Date(), action, Session.getActiveUser().getEmail()]);
+    let logSheet = dataSpreadsheet.getSheetByName('Activity Log');
+
+    // Create sheet if it doesn't exist
+    if (!logSheet) {
+      logSheet = dataSpreadsheet.insertSheet('Activity Log');
     }
+
+    // Update headers if needed (first row check)
+    const logHeaders = [
+      'Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type',
+      'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH',
+      'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6',
+      'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature'
+    ];
+
+    const currentHeaders = logSheet.getRange(1, 1, 1, logHeaders.length).getValues()[0];
+    if (currentHeaders.length !== logHeaders.length || currentHeaders.join() !== logHeaders.join()) {
+      logSheet.getRange(1, 1, 1, logHeaders.length).setValues([logHeaders])
+           .setFontWeight('bold')
+           .setBackground('#d9d9d9');
+      logSheet.setFrozenRows(1);
+    }
+
+    // Parse the checklist into 6 columns
+    let notesColumns = ["", "", "", "", "", ""];
+    if (data.checklistResults) {
+      try {
+        let parsed = typeof data.checklistResults === 'string' ? JSON.parse(data.checklistResults) : data.checklistResults;
+        let i = 0;
+        // Depending on frontend payload, it could be an array of objects
+        if (Array.isArray(parsed)) {
+            parsed.forEach(item => {
+                if (i < 6) {
+                    notesColumns[i] = item.check + ": " + (item.notes || "None");
+                    i++;
+                }
+            });
+        }
+      } catch(e) {
+        notesColumns[0] = "Error parsing notes";
+      }
+    }
+
+    // Process signature
+    let signatureUrl = "";
+    if (data.signature) {
+        try {
+            // Remove data URI prefix
+            const base64Data = data.signature.split(',')[1];
+            const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature_' + new Date().getTime() + '.png');
+            // Save to Drive to get a URL that sheets can use
+            const folder = DriveApp.getRootFolder(); // Saving to root folder
+            const file = folder.createFile(blob);
+            file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+            // Constructing a reliable Google Drive image thumbnail URL for Sheets IMAGE formula
+            const imageUrl = "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000";
+            signatureUrl = '=IMAGE("' + imageUrl + '")';
+        } catch(e) {
+            signatureUrl = "Failed to upload image";
+        }
+    }
+
+    // Calculate UPH
+    let uph = "N/A";
+    if (data.totalSeconds > 0 && data.totalCount > 0) {
+        uph = Math.round(data.totalCount / (data.totalSeconds / 3600));
+    }
+
+    // Format activity logs cleanly
+    let activityText = (data.activityLogs || "").replace(/<li>/g, "").replace(/<\/li>/g, "; ").trim();
+
+    const rowData = [
+      new Date(),
+      data.leader || '',
+      data.associate || '',
+      data.function || '',
+      data.type || '',
+      data.duration || '',
+      data.totalSeconds || 0,
+      data.totalCount || 0,
+      uph,
+      activityText,
+      notesColumns[0],
+      notesColumns[1],
+      notesColumns[2],
+      notesColumns[3],
+      notesColumns[4],
+      notesColumns[5],
+      data.fbPace || '',
+      data.fbSkills || '',
+      data.fbTraining || '',
+      data.fbEnvironment || '',
+      data.fbNotes || '',
+      signatureUrl
+    ];
+
+    logSheet.appendRow(rowData);
+
   } catch(e) {
     Logger.log("Failed to log activity: " + e.toString());
   }
@@ -223,7 +317,7 @@ function submitObservation(data) {
     // Check milestones and email
     handleEmails(sheet, data.associate, data.type, observationId, data.notes, data.topic);
 
-    logActivity("Submitted Conversation Observation for " + data.associate);
+    // Only processJSO logs detailed activities now.
 
 
     return { success: true };
@@ -338,7 +432,7 @@ function submitCoaching(data) {
     ]]);
 
 
-    logActivity("Submitted Coaching for observation ID " + data.id);
+    // Only processJSO logs detailed activities now.
 
     return { success: true };
   } catch (error) {
@@ -388,11 +482,8 @@ function processJSO(data) {
 
         <h3 style="color: #333;">Checklist</h3>
         <ul style="line-height: 1.6;">
-          <li><strong>Personal Protective Equipment:</strong> ${data.ppe ? 'Yes' : 'No'}</li>
-          <li><strong>Safe Lifting Techniques:</strong> ${data.safeLifting ? 'Yes' : 'No'}</li>
-          <li><strong>Walkways Clear:</strong> ${data.clearWalkways ? 'Yes' : 'No'}</li>
+          ${(data.checklistResults || []).map(item => `<li><strong>${item.check}:</strong> ${item.notes || 'No notes'}</li>`).join('')}
         </ul>
-
 
         <h3 style="color: #333;">Performance Metrics</h3>
         <ul style="line-height: 1.6;">
@@ -452,7 +543,7 @@ function processJSO(data) {
     });
 
 
-    logActivity("Submitted Job Safety Observation PDF for " + data.associate);
+    logActivity(data);
 
 
     return { success: true };
