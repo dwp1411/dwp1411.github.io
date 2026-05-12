@@ -520,11 +520,11 @@
           const container = document.getElementById('dynamic-checklist-area');
           container.innerHTML = ''; // clear existing
 
-          let items = checklistData[funcName];
-          if (!items) {
-              // Fallback default
-              items = ["Proper PPE Usage", "Safe Lifting Techniques", "Keep Area Clear of Hazards"];
-          }
+          let items = checklistData[funcName] ? [...checklistData[funcName]] : ["Proper PPE Usage", "Safe Lifting Techniques", "Keep Area Clear of Hazards"];
+
+          // Append the universally requested items
+          if (!items.includes("Delays in Production")) items.push("Delays in Production");
+          if (!items.includes("Follow SOP")) items.push("Follow SOP");
 
           items.forEach((item, index) => {
               const checkId = 'check-' + index;

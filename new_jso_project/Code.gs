@@ -21,7 +21,7 @@ function setupDatabase() {
 
     // Activity Log Tab
     const logSheet = newSpreadsheet.insertSheet('Activity Log');
-    const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
+    const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'Notes 7', 'Notes 8', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
     logSheet.getRange(1, 1, 1, logHeaders[0].length).setValues(logHeaders)
          .setFontWeight('bold')
          .setBackground('#d9d9d9');
@@ -78,7 +78,7 @@ function updateExistingDatabase() {
     let logSheet = dataSpreadsheet.getSheetByName('Activity Log');
     if (!logSheet) {
       logSheet = dataSpreadsheet.insertSheet('Activity Log');
-      const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
+      const logHeaders = [['Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type', 'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH', 'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'Notes 7', 'Notes 8', 'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature']];
       logSheet.getRange(1, 1, 1, logHeaders[0].length).setValues(logHeaders)
            .setFontWeight('bold')
            .setBackground('#d9d9d9');
@@ -110,7 +110,7 @@ function logActivity(data) {
     const logHeaders = [
       'Timestamp', 'Leader', 'Associate', 'Function', 'Observation Type',
       'Duration', 'Total Seconds', 'Total Count', 'Calculated UPH',
-      'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6',
+      'Activity Logs', 'Notes 1', 'Notes 2', 'Notes 3', 'Notes 4', 'Notes 5', 'Notes 6', 'Notes 7', 'Notes 8',
       'FB: Pace', 'FB: Skills', 'FB: Training', 'FB: Environment', 'FB: Notes', 'Signature'
     ];
 
@@ -122,8 +122,8 @@ function logActivity(data) {
       logSheet.setFrozenRows(1);
     }
 
-    // Parse the checklist into 6 columns
-    let notesColumns = ["", "", "", "", "", ""];
+    // Parse the checklist into 8 columns
+    let notesColumns = ["", "", "", "", "", "", "", ""];
     if (data.checklistResults) {
       try {
         let parsed = typeof data.checklistResults === 'string' ? JSON.parse(data.checklistResults) : data.checklistResults;
@@ -131,7 +131,7 @@ function logActivity(data) {
         // Depending on frontend payload, it could be an array of objects
         if (Array.isArray(parsed)) {
             parsed.forEach(item => {
-                if (i < 6) {
+                if (i < 8) {
                     notesColumns[i] = item.check + ": " + (item.notes || "None");
                     i++;
                 }
@@ -187,6 +187,8 @@ function logActivity(data) {
       notesColumns[3],
       notesColumns[4],
       notesColumns[5],
+      notesColumns[6],
+      notesColumns[7],
       data.fbPace || '',
       data.fbSkills || '',
       data.fbTraining || '',
