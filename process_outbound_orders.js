@@ -1,11 +1,14 @@
 function generateRetailFurnitureOutboundReport() {
-  const mainDataSheetId = '1GTGuDDiY0PwYymhRaxMHyCLKTRFjYo7fX6BfPHumF9w';
+  const mainDataSheetId = '1wAKRslJgyiRXEW-Ah2yzbU3PT-IGcpPYSl6xR_A-WlE';
   const storesSheetId = '1UNfyB49dGQHGkJQIEWqtH62HIUOEQSXRWEuplscP4nA';
   const outboundTrackerId = '18MMQBgiZY8MqBVX4qQHLTxYyUbytTeglv-QmJ124_gQ';
 
   // 1. Fetch Main Data
   const mainSpreadsheet = SpreadsheetApp.openById(mainDataSheetId);
-  const mainSheet = mainSpreadsheet.getSheets()[0]; // Assuming first sheet
+  let mainSheet = mainSpreadsheet.getSheetByName('data');
+  if (!mainSheet) {
+    mainSheet = mainSpreadsheet.getSheets()[0]; // Fallback if 'data' tab isn't exactly named that yet
+  }
   const mainData = mainSheet.getDataRange().getValues();
   const mainHeaders = mainData[0];
 
