@@ -204,6 +204,12 @@ function logActivity(data) {
 
 function getFunctionsAndUPH() {
   try {
+    const cache = CacheService.getScriptCache();
+    const cachedData = cache.get('functions_uph');
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
     const spreadsheet = SpreadsheetApp.openById(FUNCTIONS_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(FUNCTIONS_TAB_NAME);
     if (!sheet) {
@@ -230,6 +236,10 @@ function getFunctionsAndUPH() {
         });
       }
     }
+
+    // Store in cache for 4 hours
+    cache.put('functions_uph', JSON.stringify(functionsList), 14400);
+
     return functionsList;
   } catch (error) {
     Logger.log("Error in getFunctionsAndUPH: " + error.toString());
@@ -240,6 +250,12 @@ function getFunctionsAndUPH() {
 
 function getHierarchy() {
   try {
+    const cache = CacheService.getScriptCache();
+    const cachedData = cache.get('staff_hierarchy');
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
     const attendanceSpreadsheet = SpreadsheetApp.openById(ATTENDANCE_SHEET_ID);
     const sheet = attendanceSpreadsheet.getSheetByName(ATTENDANCE_TAB_NAME);
 
@@ -274,6 +290,9 @@ function getHierarchy() {
     for (const leader in hierarchy) {
         hierarchy[leader].sort();
     }
+
+    // Store in cache for 4 hours (14400 seconds)
+    cache.put('staff_hierarchy', JSON.stringify(hierarchy), 14400);
 
     return hierarchy;
   } catch (error) {
