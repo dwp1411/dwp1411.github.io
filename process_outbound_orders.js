@@ -328,7 +328,9 @@ function generateRetailFurnitureOutboundReport() {
 
     // Apply Formatting
     // Set format for percentage rows
-    sheet.getRange(outputData.length - 3, 3, 4, sortedDays.length).setNumberFormat("0.00%");
+    if (sortedDays.length > 0) {
+      sheet.getRange(outputData.length - 3, 3, 4, sortedDays.length).setNumberFormat("0.00%");
+    }
 
     // Format headers
     sheet.getRange(1, 1, 2, outputData[0].length).setFontWeight("bold");
