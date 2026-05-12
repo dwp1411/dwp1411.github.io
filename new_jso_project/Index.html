@@ -27,21 +27,9 @@
 
       <div id="landing-view" style="display: none;">
           <h1 style="text-align: center; color: #0056b3; margin-top: 0;">Crate & Barrel Tracker</h1>
-          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select your name and your associate below to begin.</p>
+          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select a path below to begin.</p>
 
-          <div class="form-group">
-            <label>Observing Leader:</label>
-            <select id="global-leader" onchange="updateGlobalAssociates()">
-              <option value="" disabled selected>Loading Leaders...</option>
-            </select>
-          </div>
 
-          <div class="form-group">
-            <label>Associate:</label>
-            <select id="global-associate" disabled>
-              <option value="" disabled selected>Select a Leader first</option>
-            </select>
-          </div>
 
 
           <div class="split-buttons">
@@ -214,14 +202,17 @@
 
 
             <div class="form-group">
-              <label>Leader:</label>
-              <input type="text" id="conv-leader-display" readonly style="background-color:#e9ecef;">
+              <label for="conv-leader">Leader:</label>
+              <select id="conv-leader" name="conv-leader" onchange="updateAssociates('conv-leader', 'conv-assoc')" required>
+                <option value="" disabled selected>Select a Leader...</option>
+              </select>
             </div>
 
-
             <div class="form-group">
-              <label>Associate:</label>
-              <input type="text" id="conv-assoc-display" readonly style="background-color:#e9ecef;">
+              <label for="conv-assoc">Associate:</label>
+              <select id="conv-assoc" name="conv-assoc" required disabled>
+                <option value="" disabled selected>First select a Leader</option>
+              </select>
             </div>
 
 
@@ -649,7 +640,7 @@
 
 
       function populateGlobalLeaders() {
-        const globalLeaderSelect = document.getElementById('global-leader');
+        const globalLeaderSelect = document.getElementById('conv-leader');
         const jsoLeaderSelect = document.getElementById('jso-leader');
 
         if (Object.keys(staffHierarchy).length === 0) {
@@ -674,27 +665,6 @@
       }
 
 
-      function updateGlobalAssociates() {
-        const leaderSelect = document.getElementById('global-leader');
-        const associateSelect = document.getElementById('global-associate');
-        const selectedLeader = leaderSelect.value;
-
-        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
-
-        if (selectedLeader && staffHierarchy[selectedLeader]) {
-          const associates = staffHierarchy[selectedLeader];
-          associates.forEach(associate => {
-            const option = document.createElement('option');
-            option.value = associate;
-            option.textContent = associate;
-            associateSelect.appendChild(option);
-          });
-          associateSelect.disabled = false;
-        } else {
-          associateSelect.disabled = true;
-          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
-        }
-      }
       function updateAssociates(leaderId, assocId) {
         const leaderSelect = document.getElementById(leaderId);
         const associateSelect = document.getElementById(assocId);
@@ -729,30 +699,9 @@
 
 
       function selectPath(path) {
-          const leader = document.getElementById('global-leader').value;
-          const associate = document.getElementById('global-associate').value;
-
-
-          if (!leader || !associate) {
-              const msg = document.getElementById('messageArea');
-              msg.textContent = "Please select a Leader and Associate to begin.";
-              msg.className = "message error";
-              msg.style.display = "block";
-              return;
-          }
-
-
           hideAllViews();
           document.getElementById(path + '-view').style.display = 'block';
-
-
-          // Pre-fill the visual inputs on the Conversations page
-          if (path === 'conversations') {
-              document.getElementById('conv-leader-display').value = leader;
-              document.getElementById('conv-assoc-display').value = associate;
-          }
       }
-
 
       function goBack(viewId) {
           hideAllViews();
@@ -900,8 +849,8 @@
         const msg = document.getElementById('messageArea');
 
         const topic = document.getElementById('topic').value;
-        const leader = document.getElementById('global-leader').value;
-        const associate = document.getElementById('global-associate').value;
+        const leader = document.getElementById('conv-leader').value;
+        const associate = document.getElementById('conv-assoc').value;
         const typePositive = document.getElementById('type-positive').checked;
         const notes = document.getElementById('notes').value;
 
@@ -937,8 +886,8 @@
         const btn = document.getElementById('submitPdfBtn');
         const msg = document.getElementById('messageArea');
 
-        const leader = document.getElementById('global-leader').value;
-        const associate = document.getElementById('global-associate').value;
+        const leader = document.getElementById('jso-leader').value;
+        const associate = document.getElementById('jso-associate').value;
         const func = document.getElementById('jso-function').value;
 
         let formattedLogs = trackingLogs.map(log => {
