@@ -329,7 +329,11 @@ function generateRetailFurnitureOutboundReport() {
       const isPicking = pickingToday[origin].has(store);
       const isShipping = shippingToday[origin].has(store);
 
-      const overrideColor = (isPicking || isShipping) ? "#00FF00" : null; // Highlight overrides
+      let overrideColor = null;
+      if (isPicking) overrideColor = "#4a86e8"; // Light Blue 2 approximation in hex or you can use Google standard like #cfe2f3
+      if (isShipping) overrideColor = "#d9d2e9"; // Light Purple 2 approximation
+      // If both picking and shipping, we just take shipping or what you prefer. Let's assume they don't overlap or one takes precedence.
+
       const rowColors = [];
 
       for (let c = 0; c < sortedDays.length; c++) {
