@@ -194,7 +194,7 @@ function generateRetailFurnitureOutboundReport() {
     if (!sheet) {
       sheet = newSpreadsheet.insertSheet(origin);
     }
-    sheet.clear();
+    // sheet.clear(); // Removed so we don't wipe custom columns to the right
 
     // Headers Row 1 (Empty placeholders for row 1, dates in row 2)
     // Actually, in the image:
@@ -311,7 +311,17 @@ function generateRetailFurnitureOutboundReport() {
     outputData.push(pctHDCRow);
     outputData.push(pctOutletRow);
 
+
+    // Clear only the range we are writing to, so custom formulas to the right remain untouched
+    const maxRows = Math.max(sheet.getMaxRows(), outputData.length);
+    if (outputData[0].length > 2) {
+      // Clear data from column C to the end of our output data columns
+      sheet.getRange(1, 3, maxRows, outputData[0].length - 2).clearContent();
+    }
+
+    // Write new data
     sheet.getRange(1, 1, outputData.length, outputData[0].length).setValues(outputData);
+
 
     // Apply Formatting
     // Set format for percentage rows
@@ -335,6 +345,9 @@ function generateRetailFurnitureOutboundReport() {
       // If both picking and shipping, we just take shipping or what you prefer. Let's assume they don't overlap or one takes precedence.
 
       const rowColors = [];
+      // Add the override color to columns A and B if picking/shipping, else white/default
+      rowColors.push(overrideColor ? overrideColor : null);
+      rowColors.push(overrideColor ? overrideColor : null);
 
       for (let c = 0; c < sortedDays.length; c++) {
          const daysDiff = sortedDays[c];
@@ -352,7 +365,7 @@ function generateRetailFurnitureOutboundReport() {
     }
 
     if (bgColors.length > 0 && bgColors[0].length > 0) {
-      sheet.getRange(3, 3, bgColors.length, bgColors[0].length).setBackgrounds(bgColors);
+      sheet.getRange(3, 1, bgColors.length, bgColors[0].length).setBackgrounds(bgColors);
     }
 
     // Set column widths to be more legible
