@@ -15,8 +15,8 @@ function normalizeName(nameStr) {
   return nameStr.toString()
     .trim()
     .toUpperCase()
-    .replace(/[.,\-]/g, ' ') // replace commas, dots, hyphens with space
-    .replace(/\s+/g, ' ')    // collapse multiple spaces into one
+    .replace(/[.,\-]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -49,6 +49,18 @@ function clearNameMappings() {
     PropertiesService.getDocumentProperties().deleteProperty('NameMappings');
     ui.alert('All saved name mappings have been cleared.');
   }
+}
+
+/**
+ * Helper to escape HTML to prevent injection
+ */
+function escapeHtml(unsafe) {
+    return (unsafe || "").toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 /**
@@ -103,21 +115,22 @@ function submitHours() {
 
   var files = folder.getFiles();
   var timecardFileId = null;
+  var timecardFile = null;
 
   while (files.hasNext()) {
     var file = files.next();
     if (file.getName().indexOf(mondayString) !== -1) {
       timecardFileId = file.getId();
+      timecardFile = SpreadsheetApp.open(file);
       break;
     }
   }
 
-  if (!timecardFileId) {
+  if (!timecardFile) {
     SpreadsheetApp.getUi().alert('Error: Could not find a Timecard file containing "' + mondayString + '" in its name within the specified folder.');
     return;
   }
 
-  var timecardFile = SpreadsheetApp.openById(timecardFileId);
   var payrollDropSheet = timecardFile.getSheetByName('Payroll Drop');
   if (!payrollDropSheet) {
     SpreadsheetApp.getUi().alert('Error: "Payroll Drop" tab not found in the timecard file: ' + timecardFile.getName());
@@ -125,13 +138,13 @@ function submitHours() {
   }
 
   var dayConfigs = {
-    1: { nameCol: 3, regCol: 6, otCol: 7, dateCell: 'F1' },
-    2: { nameCol: 12, regCol: 15, otCol: 16, dateCell: 'O1' },
-    3: { nameCol: 21, regCol: 24, otCol: 25, dateCell: 'Y1' },
-    4: { nameCol: 30, regCol: 33, otCol: 34, dateCell: 'AG1' },
-    5: { nameCol: 39, regCol: 42, otCol: 43, dateCell: 'AP1' },
-    6: { nameCol: 48, regCol: 51, otCol: 52, dateCell: 'AY1' },
-    0: { nameCol: 56, regCol: 59, otCol: 60, dateCell: 'BH1' }
+    1: { nameCol: 3, regCol: 6, otCol: 7, dateCell: 'F1', tempCol: 6 },
+    2: { nameCol: 12, regCol: 15, otCol: 16, dateCell: 'O1', tempCol: 7 },
+    3: { nameCol: 21, regCol: 24, otCol: 25, dateCell: 'Y1', tempCol: 8 },
+    4: { nameCol: 30, regCol: 33, otCol: 34, dateCell: 'AG1', tempCol: 9 },
+    5: { nameCol: 39, regCol: 42, otCol: 43, dateCell: 'AP1', tempCol: 10 },
+    6: { nameCol: 48, regCol: 51, otCol: 52, dateCell: 'AY1', tempCol: 11 },
+    0: { nameCol: 56, regCol: 59, otCol: 60, dateCell: 'BH1', tempCol: 12 }
   };
 
   var config = dayConfigs[dayOfWeek];
@@ -146,18 +159,15 @@ function submitHours() {
   }
 
   // Extract Source Data
-  var updates = [];
-
   var crateLastRow = crateSheet.getLastRow();
+  var crateData = [];
   if (crateLastRow > 1) {
-    var crateData = crateSheet.getRange(2, 1, crateLastRow - 1, 8).getValues();
-    for (var i = 0; i < crateData.length; i++) {
-        updates.push({ name: crateData[i][0], hours: crateData[i][7] });
-    }
+    crateData = crateSheet.getRange(2, 1, crateLastRow - 1, 8).getValues();
   }
 
   var tempLastRow = tempSheet.getLastRow();
   var tempLastCol = tempSheet.getLastColumn();
+  var tempData = [];
 
   if (tempLastRow > 0 && tempLastCol > 0) {
     var fullTempData = tempSheet.getRange(1, 1, Math.min(tempLastRow, 50), tempLastCol).getValues();
@@ -196,7 +206,11 @@ function submitHours() {
 
         if (nameColIdx !== -1 && targetTempColIdx !== -1) {
           for (var r = 0; r < rawTempData.length; r++) {
-            updates.push({ name: rawTempData[r][nameColIdx], hours: rawTempData[r][targetTempColIdx] });
+            tempData.push([
+                null,
+                rawTempData[r][nameColIdx],
+                rawTempData[r][targetTempColIdx]
+            ]);
           }
         }
       }
@@ -205,282 +219,7 @@ function submitHours() {
     }
   }
 
-  // Get Payroll Drop names
   var payrollLastRow = payrollDropSheet.getLastRow();
-  var payrollNamesRaw = payrollDropSheet.getRange(1, config.nameCol, payrollLastRow, 1).getValues();
-
-  var dropNames = [];
-  var dropNamesNormalized = [];
-
-  for (var i = 0; i < payrollNamesRaw.length; i++) {
-      var nameStr = payrollNamesRaw[i][0].toString().trim();
-      if (nameStr !== "" && nameStr.toLowerCase().indexOf('associate') === -1) {
-          dropNames.push(nameStr);
-          dropNamesNormalized.push(normalizeName(nameStr));
-      }
-  }
-
-  // Cross-reference names
-  var mappings = getSavedMappings();
-  var mismatches = [];
-
-  for (var i = 0; i < updates.length; i++) {
-      var uName = updates[i].name;
-      var hours = updates[i].hours;
-
-      if (!uName || hours === "" || hours === null || hours === undefined) continue;
-
-      var normUName = normalizeName(uName);
-      if (normUName === "") continue;
-
-      // Check if it exactly matches a drop name
-      var isMatch = dropNamesNormalized.indexOf(normUName) !== -1;
-
-      // Check if it's in our saved aliases
-      if (!isMatch && mappings[normUName]) {
-          var mappedName = mappings[normUName];
-          if (dropNamesNormalized.indexOf(mappedName) !== -1) {
-             isMatch = true;
-          }
-      }
-
-      if (!isMatch) {
-          // It's a true mismatch
-          mismatches.push(uName);
-      }
-  }
-
-  // Fetch fresh Attendance Tracker names to perform a "Smart Append"
-  var trackerId = '1YQ0uua9CU04SYBSl1MO_kT9UuO8YNYwJyWMm_3tm8GM';
-  var freshNamesList = [];
-
-  try {
-     var trackerSs = SpreadsheetApp.openById(trackerId);
-     var currentCrateSheet = trackerSs.getSheetByName('Current Crate');
-     var currentTempSheet = trackerSs.getSheetByName('Current Temp');
-
-     if (currentCrateSheet) {
-        var crateDataRaw = currentCrateSheet.getRange('B3:D1000').getValues();
-        for (var i = 0; i < crateDataRaw.length; i++) {
-           if (crateDataRaw[i][0]) { // If name exists
-               freshNamesList.push({
-                   sup: crateDataRaw[i][1],
-                   name: crateDataRaw[i][0],
-                   func: crateDataRaw[i][2]
-               });
-           }
-        }
-     }
-
-     if (currentTempSheet) {
-         var tempNameRaw = currentTempSheet.getRange('B2:B1000').getValues();
-         var tempSupRaw = currentTempSheet.getRange('D2:D1000').getValues();
-         var tempFuncRaw = currentTempSheet.getRange('E2:E1000').getValues();
-
-         for (var i = 0; i < tempNameRaw.length; i++) {
-            if (tempNameRaw[i][0]) { // If name exists
-               freshNamesList.push({
-                   sup: tempSupRaw[i][0],
-                   name: tempNameRaw[i][0],
-                   func: tempFuncRaw[i][0]
-               });
-            }
-         }
-     }
-  } catch (e) {
-     console.warn("Could not fetch Attendance Tracker for smart append.", e);
-  }
-
-  // Deduplicate mismatches
-  var uniqueMismatches = mismatches.filter(function(item, pos) {
-      return mismatches.indexOf(item) == pos;
-  });
-
-  /**
-   * Helper to escape HTML to prevent injection
-   */
-  function escapeHtml(unsafe) {
-      return (unsafe || "").toString()
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-  }
-
-  if (uniqueMismatches.length > 0) {
-      // Build HTML UI
-      dropNames.sort(); // Sort alphabetically for the dropdown
-
-      var html = `
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 10px; }
-            .mismatch { margin-bottom: 15px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
-            .mismatch strong { color: #d32f2f; }
-            select { width: 100%; padding: 5px; margin-top: 5px; }
-            .btn { background-color: #1a73e8; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-weight: bold;}
-            .btn:hover { background-color: #1557b0; }
-          </style>
-          <script>
-            function submitForm() {
-              var btn = document.getElementById('submitBtn');
-              btn.disabled = true;
-              btn.innerText = "Processing...";
-
-              var selects = document.querySelectorAll('select');
-              var mappings = {};
-
-              for (var i = 0; i < selects.length; i++) {
-                 var sourceName = selects[i].getAttribute('data-source');
-                 var mappedTo = selects[i].value;
-                 if (mappedTo !== "_SKIP_") {
-                    mappings[sourceName] = mappedTo;
-                 }
-              }
-
-              google.script.run
-                  .withSuccessHandler(function() { google.script.host.close(); })
-                  .processManualMappings(mappings, ${JSON.stringify(timecardFileId)}, ${targetDateValue.getTime()}, ${JSON.stringify(JSON.stringify(freshNamesList))});
-            }
-          </script>
-        </head>
-        <body>
-          <p>We found some names in Crate/Temp that don't match the <b>Payroll Drop</b> tab. Please map them below so we can learn them for the future, or skip them.</p>
-          <form onsubmit="event.preventDefault(); submitForm();">
-      `;
-
-      var dropOptionsHtml = '<option value="_SKIP_">-- Skip / Ignore --</option>';
-      for (var i=0; i<dropNames.length; i++) {
-          dropOptionsHtml += '<option value="' + escapeHtml(dropNames[i]) + '">' + escapeHtml(dropNames[i]) + '</option>';
-      }
-
-      for (var i = 0; i < uniqueMismatches.length; i++) {
-          html += '<div class="mismatch">Found: <strong>' + escapeHtml(uniqueMismatches[i]) + '</strong><br>';
-          html += '<select data-source="' + escapeHtml(uniqueMismatches[i]) + '">';
-          html += dropOptionsHtml;
-          html += '</select></div>';
-      }
-
-      html += '<br><button id="submitBtn" class="btn" type="submit">Save & Continue Sync</button></form></body></html>';
-
-      var htmlOutput = HtmlService.createHtmlOutput(html)
-          .setWidth(450)
-          .setHeight(500)
-          .setTitle('Resolve Name Mismatches');
-
-      SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Resolve Name Mismatches');
-      return; // Execution stops here and resumes in processManualMappings
-  }
-
-  // If no mismatches, proceed immediately
-  executeSubmitHours(timecardFileId, targetDateValue.getTime(), freshNamesList);
-}
-
-/**
- * Called by the HTML dialog to save user mappings and resume execution.
- */
-function processManualMappings(newMappings, timecardFileId, targetDateTime, freshNamesListStr) {
-   for (var source in newMappings) {
-       saveMapping(source, newMappings[source]);
-   }
-
-   var freshNamesList = [];
-   try {
-       freshNamesList = JSON.parse(freshNamesListStr);
-   } catch(e) {}
-
-   executeSubmitHours(timecardFileId, targetDateTime, freshNamesList);
-}
-
-/**
- * The second half of submitHours that actually writes the data.
- */
-function executeSubmitHours(timecardFileId, targetDateTime, freshNamesList) {
-   var calculatorId = '18O_zZ2TQRRABy_J_GSHxNXVk-WDas1onJ6AzaKlnfG8';
-   var ss = SpreadsheetApp.openById(calculatorId);
-   var crateSheet = ss.getSheetByName('Crate');
-   var tempSheet = ss.getSheetByName('Temp');
-
-   var targetDate = new Date(targetDateTime);
-   var dayOfWeek = targetDate.getDay();
-
-   var timecardFile = SpreadsheetApp.openById(timecardFileId);
-   var payrollDropSheet = timecardFile.getSheetByName('Payroll Drop');
-
-   var dayConfigs = {
-    1: { nameCol: 3, regCol: 6, otCol: 7 },
-    2: { nameCol: 12, regCol: 15, otCol: 16 },
-    3: { nameCol: 21, regCol: 24, otCol: 25 },
-    4: { nameCol: 30, regCol: 33, otCol: 34 },
-    5: { nameCol: 39, regCol: 42, otCol: 43 },
-    6: { nameCol: 48, regCol: 51, otCol: 52 },
-    0: { nameCol: 56, regCol: 59, otCol: 60 }
-  };
-  var config = dayConfigs[dayOfWeek];
-
-  // Re-fetch Crate and Temp data
-  var updates = [];
-
-  var crateLastRow = crateSheet.getLastRow();
-  if (crateLastRow > 1) {
-    var crateData = crateSheet.getRange(2, 1, crateLastRow - 1, 8).getValues();
-    for (var i = 0; i < crateData.length; i++) {
-        updates.push({ name: crateData[i][0], hours: crateData[i][7] });
-    }
-  }
-
-  var tempLastRow = tempSheet.getLastRow();
-  var tempLastCol = tempSheet.getLastColumn();
-
-  if (tempLastRow > 0 && tempLastCol > 0) {
-    var fullTempData = tempSheet.getRange(1, 1, Math.min(tempLastRow, 50), tempLastCol).getValues();
-    var headerRowIndex = -1;
-    var nameColIdx = -1;
-    var daysCols = { 1: -1, 2: -1, 3: -1, 4: -1, 5: -1, 6: -1, 0: -1 };
-
-    for (var r = 0; r < fullTempData.length; r++) {
-      for (var c = 0; c < fullTempData[r].length; c++) {
-        var cellVal = String(fullTempData[r][c]).trim().toLowerCase();
-        if (cellVal.indexOf('employee name') !== -1) {
-          headerRowIndex = r;
-          break;
-        }
-      }
-      if (headerRowIndex !== -1) break;
-    }
-
-    if (headerRowIndex !== -1) {
-      for (var c = 0; c < tempLastCol; c++) {
-        var hVal = String(fullTempData[headerRowIndex][c]).trim().toLowerCase();
-        if (hVal.indexOf('employee name') !== -1) nameColIdx = c;
-        else if (hVal.indexOf('mon') !== -1) daysCols[1] = c;
-        else if (hVal.indexOf('tue') !== -1) daysCols[2] = c;
-        else if (hVal.indexOf('wed') !== -1) daysCols[3] = c;
-        else if (hVal.indexOf('thu') !== -1) daysCols[4] = c;
-        else if (hVal.indexOf('fri') !== -1) daysCols[5] = c;
-        else if (hVal.indexOf('sat') !== -1) daysCols[6] = c;
-        else if (hVal.indexOf('sun') !== -1) daysCols[0] = c;
-      }
-
-      var dataStartRow = headerRowIndex + 2;
-      if (tempLastRow >= dataStartRow) {
-        var rawTempData = tempSheet.getRange(dataStartRow, 1, tempLastRow - dataStartRow + 1, tempLastCol).getValues();
-        var targetTempColIdx = daysCols[dayOfWeek];
-
-        if (nameColIdx !== -1 && targetTempColIdx !== -1) {
-          for (var r = 0; r < rawTempData.length; r++) {
-            updates.push({ name: rawTempData[r][nameColIdx], hours: rawTempData[r][targetTempColIdx] });
-          }
-        }
-      }
-    }
-  }
-
-  var payrollLastRow = payrollDropSheet.getLastRow();
-  if (payrollLastRow < 3) payrollLastRow = 3; // Ensure we start reading at least from row 3
-
   var payrollNames = payrollDropSheet.getRange(1, config.nameCol, payrollLastRow, 1).getValues();
   var regRange = payrollDropSheet.getRange(1, config.regCol, payrollLastRow, 1);
   var otRange = payrollDropSheet.getRange(1, config.otCol, payrollLastRow, 1);
@@ -488,72 +227,11 @@ function executeSubmitHours(timecardFileId, targetDateTime, freshNamesList) {
   var otValues = otRange.getValues();
 
   var processedRowIndices = new Set();
-  var mappings = getSavedMappings();
 
-  // Smart Append functionality
-  if (freshNamesList && freshNamesList.length > 0) {
-      // Collect current names
-      var currentNamesNorm = [];
-      for (var i = 0; i < payrollNames.length; i++) {
-          currentNamesNorm.push(normalizeName(payrollNames[i][0]));
-      }
-
-      var newlyAddedNames = [];
-
-      for (var i = 0; i < freshNamesList.length; i++) {
-          var f = freshNamesList[i];
-          var normF = normalizeName(f.name);
-
-          if (normF === "") continue;
-
-          // Resolve if the fresh list name maps to a known drop name alias
-          if (mappings[normF]) {
-              normF = mappings[normF];
-          }
-
-          if (currentNamesNorm.indexOf(normF) === -1) {
-              // Not found, we need to append
-              newlyAddedNames.push(f);
-              currentNamesNorm.push(normF); // Prevent duplicate appends if fresh list has duplicates
-          }
-      }
-
-      if (newlyAddedNames.length > 0) {
-          // Find the last used row in this day's name column
-          var appendRowIndex = -1;
-          for (var i = payrollNames.length - 1; i >= 0; i--) {
-              if (payrollNames[i][0] && payrollNames[i][0].toString().trim() !== "") {
-                  appendRowIndex = i + 1; // 0-indexed to 1-indexed next row
-                  break;
-              }
-          }
-          if (appendRowIndex === -1 || appendRowIndex < 2) appendRowIndex = 2; // start at row 3 (index 2)
-
-          var appendData = [];
-          for (var i = 0; i < newlyAddedNames.length; i++) {
-              var f = newlyAddedNames[i];
-              appendData.push([f.sup, "", f.name, f.func]);
-
-              // Ensure array indices align correctly by explicitly assigning to the correct index
-              var targetIndex = appendRowIndex + i; // appendRowIndex is 0-indexed count
-
-              payrollNames[targetIndex] = [f.name];
-              regValues[targetIndex] = [0];
-              otValues[targetIndex] = [0];
-          }
-
-          // Write appendData directly to the sheet
-          var appendColStart = Math.max(1, config.nameCol - 2);
-          payrollDropSheet.getRange(appendRowIndex + 1, appendColStart, appendData.length, 4).setValues(appendData);
-
-          payrollLastRow = payrollNames.length;
-
-          // Re-pull the ranges to match updated payrollLastRow
-          regRange = payrollDropSheet.getRange(1, config.regCol, payrollLastRow, 1);
-          otRange = payrollDropSheet.getRange(1, config.otCol, payrollLastRow, 1);
-      }
+  function namesMatch(searchStr, targetStr) {
+    if (!searchStr || !targetStr) return false;
+    return searchStr === targetStr;
   }
-
 
   function updateHours(name, hours) {
     if (!name || hours === "" || hours === null || hours === undefined) return;
@@ -565,15 +243,10 @@ function executeSubmitHours(timecardFileId, targetDateTime, freshNamesList) {
     var searchName = normalizeName(name);
     if (searchName === "") return;
 
-    // Apply alias if it exists
-    if (mappings[searchName]) {
-        searchName = mappings[searchName];
-    }
-
     for (var i = 0; i < payrollNames.length; i++) {
       var currentName = normalizeName(payrollNames[i][0]);
 
-      if (searchName === currentName) {
+      if (namesMatch(searchName, currentName)) {
         regValues[i][0] = reg;
         otValues[i][0] = ot;
         processedRowIndices.add(i);
@@ -582,8 +255,12 @@ function executeSubmitHours(timecardFileId, targetDateTime, freshNamesList) {
     }
   }
 
-  for (var i = 0; i < updates.length; i++) {
-    updateHours(updates[i].name, updates[i].hours);
+  for (var i = 0; i < crateData.length; i++) {
+    updateHours(crateData[i][0], crateData[i][7]);
+  }
+
+  for (var i = 0; i < tempData.length; i++) {
+    updateHours(tempData[i][1], tempData[i][2]);
   }
 
   for (var i = 0; i < payrollNames.length; i++) {
@@ -630,6 +307,7 @@ function syncPayrollZonedHours() {
 
     let targetSheet = null;
     let targetSpreadsheet = null;
+    let timecardFileId = null;
 
     while (files.hasNext()) {
       const file = files.next();
@@ -645,6 +323,7 @@ function syncPayrollZonedHours() {
           if (sheetDate.getTime() === targetDate.getTime()) {
             targetSheet = sheet;
             targetSpreadsheet = ss;
+            timecardFileId = file.getId();
             break;
           }
         }
@@ -719,10 +398,10 @@ function syncPayrollZonedHours() {
 
     zonedRange.setValues(zonedData);
 
+    // Now perform the mismatched check
     const payrollDropSheet = targetSpreadsheet.getSheetByName('Payroll Drop');
     let mismatches = [];
 
-    // Get saved aliases so we don't alert for known mismatches
     const mappings = getSavedMappings();
 
     if (payrollDropSheet) {
@@ -741,66 +420,129 @@ function syncPayrollZonedHours() {
       const config = dayConfigs[dayOfWeek];
 
       if (config && dropLastRow > 0) {
-        const dropNames = payrollDropSheet.getRange(1, config.nameCol, dropLastRow, 1).getValues();
-        const dropReg = payrollDropSheet.getRange(1, config.regCol, dropLastRow, 1).getValues();
-        const dropOt = payrollDropSheet.getRange(1, config.otCol, dropLastRow, 1).getValues();
+        const dropNamesRaw = payrollDropSheet.getRange(1, config.nameCol, dropLastRow, 1).getValues();
 
-        const dailyTabNamesList = [];
-        for (let r = 0; r < numRows; r++) {
-          let normName = normalizeName(nameData[r][0]);
-
-          // Apply alias to daily tab names as well if we have one
-          // This way, if the daily tab says "Mike Smith" but Drop says "Michael Smith",
-          // and we mapped "Mike Smith" -> "Michael Smith", this matches perfectly.
-          if (mappings[normName]) {
-              normName = mappings[normName];
-          }
-
-          const pHours = parseFloat(payrollData[r][0]);
-          if (normName !== "") {
-            dailyTabNamesList.push({ name: normName, hours: isNaN(pHours) ? 0 : pHours });
-          }
+        var dropNames = [];
+        for (var i = 0; i < dropNamesRaw.length; i++) {
+            var nameStr = dropNamesRaw[i][0].toString().trim();
+            if (nameStr !== "" && nameStr.toLowerCase().indexOf('associate') === -1) {
+                dropNames.push(nameStr);
+            }
         }
 
-        for (let i = 0; i < dropLastRow; i++) {
-          const name = dropNames[i][0];
-          const reg = parseFloat(dropReg[i][0]) || 0;
-          const ot = parseFloat(dropOt[i][0]) || 0;
-          const totalHours = reg + ot;
+        // We check the Daily Tab to see if anyone has Zoned Hours but 0 Payroll Hours
+        for (let r = 0; r < numRows; r++) {
+            let dailyName = nameData[r][0].toString().trim();
+            if (!dailyName) continue;
 
-          if (totalHours > 0) {
-            const searchName = normalizeName(name);
-            let foundMatch = false;
-            let dailyHours = 0;
+            let pHours = parseFloat(payrollData[r][0]);
+            let hasZoned = false;
 
-            for (let j = 0; j < dailyTabNamesList.length; j++) {
-              if (searchName === dailyTabNamesList[j].name) {
-                foundMatch = true;
-                dailyHours = dailyTabNamesList[j].hours;
-                break;
-              }
+            // Check if they zoned anything
+            for (let c = 0; c < 46; c++) {
+                const val = parseFloat(zonedData[r][c]);
+                if (!isNaN(val) && val > 0) {
+                    hasZoned = true;
+                    break;
+                }
             }
 
-            if (!foundMatch || dailyHours <= 0) {
-              mismatches.push(name.toString().trim());
+            if (hasZoned && (isNaN(pHours) || pHours <= 0)) {
+                // Check if we already have a mapping for them
+                var normDaily = normalizeName(dailyName);
+                if (mappings[normDaily]) {
+                     // We know who they are, but their name is wrong on the daily sheet.
+                     // The mapped name wasn't written to the daily sheet yet.
+                     mismatches.push({ dailyName: dailyName, rowIdx: r + startRow });
+                } else {
+                     mismatches.push({ dailyName: dailyName, rowIdx: r + startRow });
+                }
             }
-          }
+        }
+
+        if (mismatches.length > 0) {
+            // Display UI
+            dropNames.sort();
+
+            var html = `
+            <html>
+                <head>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 10px; }
+                    .mismatch { margin-bottom: 15px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
+                    .mismatch strong { color: #d32f2f; }
+                    select { width: 100%; padding: 5px; margin-top: 5px; }
+                    .btn { background-color: #1a73e8; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-weight: bold;}
+                    .btn:hover { background-color: #1557b0; }
+                </style>
+                <script>
+                    function submitForm() {
+                        var btn = document.getElementById('submitBtn');
+                        btn.disabled = true;
+                        btn.innerText = "Processing...";
+
+                        var selects = document.querySelectorAll('select');
+                        var updates = [];
+                        var mappings = {};
+
+                        for (var i = 0; i < selects.length; i++) {
+                            var rowIdx = selects[i].getAttribute('data-row');
+                            var sourceName = selects[i].getAttribute('data-source');
+                            var mappedTo = selects[i].value;
+
+                            if (mappedTo !== "_SKIP_") {
+                                mappings[sourceName] = mappedTo;
+                                updates.push({ row: parseInt(rowIdx), name: mappedTo });
+                            }
+                        }
+
+                        google.script.run
+                            .withSuccessHandler(function() { google.script.host.close(); })
+                            .processSyncMappings(mappings, updates, ${JSON.stringify(timecardFileId)}, "${expectedTabName}");
+                    }
+                </script>
+                </head>
+                <body>
+                <p>The following people on the Daily Tab have Zoned Hours but 0 Payroll Hours. Please match them to a name from the Payroll Drop tab so we can fix the Daily Tab.</p>
+                <form onsubmit="event.preventDefault(); submitForm();">
+            `;
+
+            var dropOptionsHtml = '<option value="_SKIP_">-- Skip / Ignore --</option>';
+            for (var i=0; i<dropNames.length; i++) {
+                dropOptionsHtml += '<option value="' + escapeHtml(dropNames[i]) + '">' + escapeHtml(dropNames[i]) + '</option>';
+            }
+
+            for (var i = 0; i < mismatches.length; i++) {
+                html += '<div class="mismatch">Daily Tab Name: <strong>' + escapeHtml(mismatches[i].dailyName) + '</strong><br>';
+                html += '<select data-source="' + escapeHtml(mismatches[i].dailyName) + '" data-row="' + mismatches[i].rowIdx + '">';
+
+                // Pre-select if we already have an alias
+                var normDaily = normalizeName(mismatches[i].dailyName);
+                var preselectedHtml = dropOptionsHtml;
+                if (mappings[normDaily]) {
+                    var alias = mappings[normDaily];
+                    // Very simple preselection string replacement
+                    preselectedHtml = preselectedHtml.replace('value="' + escapeHtml(alias) + '"', 'value="' + escapeHtml(alias) + '" selected');
+                }
+
+                html += preselectedHtml;
+                html += '</select></div>';
+            }
+
+            html += '<br><button id="submitBtn" class="btn" type="submit">Fix Names & Resume Sync</button></form></body></html>';
+
+            var htmlOutput = HtmlService.createHtmlOutput(html)
+                .setWidth(450)
+                .setHeight(500)
+                .setTitle('Resolve Zoned/Payroll Mismatches');
+
+            SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Resolve Zoned/Payroll Mismatches');
+            return;
         }
       }
     }
 
-    if (mismatches.length > 0) {
-      const ui = SpreadsheetApp.getUi();
-      ui.alert(
-        'Spelling / Missing Names Alert',
-        `The following associates have hours in 'Payroll Drop' for ${expectedTabName} but show 0 hours (or are missing) in the daily tab, likely due to a spelling mismatch:\n\n` +
-        mismatches.join('\n') +
-        `\n\nPlease check the timecard to fix their names so hours calculate properly!`,
-        ui.ButtonSet.OK
-      );
-    } else {
-      masterSs.toast(`Success: Synced hours for ${updatesMade} associates on ${targetDate.toLocaleDateString()}.`, "Sync Complete", 5);
-    }
+    masterSs.toast(`Success: Synced hours for ${updatesMade} associates on ${targetDate.toLocaleDateString()}.`, "Sync Complete", 5);
 
   } catch (error) {
     console.error("Error in syncPayrollZonedHours:", error);
@@ -810,4 +552,36 @@ function syncPayrollZonedHours() {
       // Ignore
     }
   }
+}
+
+/**
+ * Called by the HTML dialog to fix the Daily Tab names, save mappings, and resume the sync.
+ */
+function processSyncMappings(newMappings, updates, timecardFileId, expectedTabName) {
+    for (var source in newMappings) {
+       saveMapping(source, newMappings[source]);
+    }
+
+    var ss = SpreadsheetApp.openById(timecardFileId);
+    var targetSheet = ss.getSheetByName(expectedTabName);
+
+    if (targetSheet && updates.length > 0) {
+        for (var i = 0; i < updates.length; i++) {
+            // Write the correct name directly to Column B on the Daily Tab
+            targetSheet.getRange(updates[i].row, 2).setValue(updates[i].name);
+        }
+    }
+
+    if (updates.length > 0) {
+        // Force spreadsheet recalculation by sleeping momentarily
+        SpreadsheetApp.flush();
+        Utilities.sleep(1000);
+
+        // Re-trigger the sync function to calculate the now-populated payroll hours
+        syncPayrollZonedHours();
+    } else {
+        // If everything was skipped, just exit gracefully.
+        var masterSs = SpreadsheetApp.openById('18O_zZ2TQRRABy_J_GSHxNXVk-WDas1onJ6AzaKlnfG8');
+        masterSs.toast("Sync completed (mismatches skipped).", "Sync Complete", 5);
+    }
 }
