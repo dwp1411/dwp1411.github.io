@@ -539,6 +539,14 @@ function processJSO(data) {
     blob.setName(`JSO_Report_${data.associate}_${timestamp.getTime()}.pdf`);
 
 
+    // Save PDF to Drive
+    try {
+        const folder = DriveApp.getFolderById('1-EkEOqqqtERYdFVBwTo2D47ppEevCVKx');
+        folder.createFile(blob);
+    } catch(e) {
+        Logger.log("Failed to save PDF to Drive: " + e.toString());
+    }
+
     // Email PDF to Managers
     MailApp.sendEmail({
       to: MANAGER_EMAIL,
