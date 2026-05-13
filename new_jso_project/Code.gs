@@ -142,24 +142,8 @@ function logActivity(data) {
       }
     }
 
-    // Process signature
-    let signatureUrl = "";
-    if (data.signature) {
-        try {
-            // Remove data URI prefix
-            const base64Data = data.signature.split(',')[1];
-            const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature_' + new Date().getTime() + '.png');
-            // Save to Drive to get a URL that sheets can use
-            const folder = DriveApp.getRootFolder(); // Saving to root folder
-            const file = folder.createFile(blob);
-            file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            // Constructing a reliable Google Drive image thumbnail URL for Sheets IMAGE formula
-            const imageUrl = "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000";
-            signatureUrl = '=IMAGE("' + imageUrl + '")';
-        } catch(e) {
-            signatureUrl = "Failed to upload image";
-        }
-    }
+    // Process signature status for spreadsheet
+    let signatureStatus = data.signature ? "Yes (See PDF)" : "No";
 
     // Calculate UPH
     let uph = "N/A";
@@ -194,7 +178,7 @@ function logActivity(data) {
       data.fbTraining || '',
       data.fbEnvironment || '',
       data.fbNotes || '',
-      signatureUrl
+      signatureStatus
     ];
 
     logSheet.appendRow(rowData);
