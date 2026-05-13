@@ -250,10 +250,63 @@ function submitHours() {
       }
   }
 
+  // Fetch fresh Attendance Tracker names to perform a "Smart Append"
+  var trackerId = '1YQ0uua9CU04SYBSl1MO_kT9UuO8YNYwJyWMm_3tm8GM';
+  var freshNamesList = [];
+
+  try {
+     var trackerSs = SpreadsheetApp.openById(trackerId);
+     var currentCrateSheet = trackerSs.getSheetByName('Current Crate');
+     var currentTempSheet = trackerSs.getSheetByName('Current Temp');
+
+     if (currentCrateSheet) {
+        var crateDataRaw = currentCrateSheet.getRange('B3:D1000').getValues();
+        for (var i = 0; i < crateDataRaw.length; i++) {
+           if (crateDataRaw[i][0]) { // If name exists
+               freshNamesList.push({
+                   sup: crateDataRaw[i][1],
+                   name: crateDataRaw[i][0],
+                   func: crateDataRaw[i][2]
+               });
+           }
+        }
+     }
+
+     if (currentTempSheet) {
+         var tempNameRaw = currentTempSheet.getRange('B2:B1000').getValues();
+         var tempSupRaw = currentTempSheet.getRange('D2:D1000').getValues();
+         var tempFuncRaw = currentTempSheet.getRange('E2:E1000').getValues();
+
+         for (var i = 0; i < tempNameRaw.length; i++) {
+            if (tempNameRaw[i][0]) { // If name exists
+               freshNamesList.push({
+                   sup: tempSupRaw[i][0],
+                   name: tempNameRaw[i][0],
+                   func: tempFuncRaw[i][0]
+               });
+            }
+         }
+     }
+  } catch (e) {
+     console.warn("Could not fetch Attendance Tracker for smart append.", e);
+  }
+
   // Deduplicate mismatches
   var uniqueMismatches = mismatches.filter(function(item, pos) {
       return mismatches.indexOf(item) == pos;
   });
+
+  /**
+   * Helper to escape HTML to prevent injection
+   */
+  function escapeHtml(unsafe) {
+      return (unsafe || "").toString()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+  }
 
   if (uniqueMismatches.length > 0) {
       // Build HTML UI
@@ -289,7 +342,7 @@ function submitHours() {
 
               google.script.run
                   .withSuccessHandler(function() { google.script.host.close(); })
-                  .processManualMappings(mappings, ${JSON.stringify(timecardFileId)}, ${targetDateValue.getTime()});
+                  .processManualMappings(mappings, ${JSON.stringify(timecardFileId)}, ${targetDateValue.getTime()}, ${JSON.stringify(JSON.stringify(freshNamesList))});
             }
           </script>
         </head>
@@ -300,12 +353,12 @@ function submitHours() {
 
       var dropOptionsHtml = '<option value="_SKIP_">-- Skip / Ignore --</option>';
       for (var i=0; i<dropNames.length; i++) {
-          dropOptionsHtml += '<option value="' + dropNames[i] + '">' + dropNames[i] + '</option>';
+          dropOptionsHtml += '<option value="' + escapeHtml(dropNames[i]) + '">' + escapeHtml(dropNames[i]) + '</option>';
       }
 
       for (var i = 0; i < uniqueMismatches.length; i++) {
-          html += '<div class="mismatch">Found: <strong>' + uniqueMismatches[i] + '</strong><br>';
-          html += '<select data-source="' + uniqueMismatches[i] + '">';
+          html += '<div class="mismatch">Found: <strong>' + escapeHtml(uniqueMismatches[i]) + '</strong><br>';
+          html += '<select data-source="' + escapeHtml(uniqueMismatches[i]) + '">';
           html += dropOptionsHtml;
           html += '</select></div>';
       }
@@ -322,23 +375,29 @@ function submitHours() {
   }
 
   // If no mismatches, proceed immediately
-  executeSubmitHours(timecardFileId, targetDateValue.getTime());
+  executeSubmitHours(timecardFileId, targetDateValue.getTime(), freshNamesList);
 }
 
 /**
  * Called by the HTML dialog to save user mappings and resume execution.
  */
-function processManualMappings(newMappings, timecardFileId, targetDateTime) {
+function processManualMappings(newMappings, timecardFileId, targetDateTime, freshNamesListStr) {
    for (var source in newMappings) {
        saveMapping(source, newMappings[source]);
    }
-   executeSubmitHours(timecardFileId, targetDateTime);
+
+   var freshNamesList = [];
+   try {
+       freshNamesList = JSON.parse(freshNamesListStr);
+   } catch(e) {}
+
+   executeSubmitHours(timecardFileId, targetDateTime, freshNamesList);
 }
 
 /**
  * The second half of submitHours that actually writes the data.
  */
-function executeSubmitHours(timecardFileId, targetDateTime) {
+function executeSubmitHours(timecardFileId, targetDateTime, freshNamesList) {
    var calculatorId = '18O_zZ2TQRRABy_J_GSHxNXVk-WDas1onJ6AzaKlnfG8';
    var ss = SpreadsheetApp.openById(calculatorId);
    var crateSheet = ss.getSheetByName('Crate');
@@ -420,6 +479,8 @@ function executeSubmitHours(timecardFileId, targetDateTime) {
   }
 
   var payrollLastRow = payrollDropSheet.getLastRow();
+  if (payrollLastRow < 3) payrollLastRow = 3; // Ensure we start reading at least from row 3
+
   var payrollNames = payrollDropSheet.getRange(1, config.nameCol, payrollLastRow, 1).getValues();
   var regRange = payrollDropSheet.getRange(1, config.regCol, payrollLastRow, 1);
   var otRange = payrollDropSheet.getRange(1, config.otCol, payrollLastRow, 1);
@@ -428,6 +489,71 @@ function executeSubmitHours(timecardFileId, targetDateTime) {
 
   var processedRowIndices = new Set();
   var mappings = getSavedMappings();
+
+  // Smart Append functionality
+  if (freshNamesList && freshNamesList.length > 0) {
+      // Collect current names
+      var currentNamesNorm = [];
+      for (var i = 0; i < payrollNames.length; i++) {
+          currentNamesNorm.push(normalizeName(payrollNames[i][0]));
+      }
+
+      var newlyAddedNames = [];
+
+      for (var i = 0; i < freshNamesList.length; i++) {
+          var f = freshNamesList[i];
+          var normF = normalizeName(f.name);
+
+          if (normF === "") continue;
+
+          // Resolve if the fresh list name maps to a known drop name alias
+          if (mappings[normF]) {
+              normF = mappings[normF];
+          }
+
+          if (currentNamesNorm.indexOf(normF) === -1) {
+              // Not found, we need to append
+              newlyAddedNames.push(f);
+              currentNamesNorm.push(normF); // Prevent duplicate appends if fresh list has duplicates
+          }
+      }
+
+      if (newlyAddedNames.length > 0) {
+          // Find the last used row in this day's name column
+          var appendRowIndex = -1;
+          for (var i = payrollNames.length - 1; i >= 0; i--) {
+              if (payrollNames[i][0] && payrollNames[i][0].toString().trim() !== "") {
+                  appendRowIndex = i + 1; // 0-indexed to 1-indexed next row
+                  break;
+              }
+          }
+          if (appendRowIndex === -1 || appendRowIndex < 2) appendRowIndex = 2; // start at row 3 (index 2)
+
+          var appendData = [];
+          for (var i = 0; i < newlyAddedNames.length; i++) {
+              var f = newlyAddedNames[i];
+              appendData.push([f.sup, "", f.name, f.func]);
+
+              // Ensure array indices align correctly by explicitly assigning to the correct index
+              var targetIndex = appendRowIndex + i; // appendRowIndex is 0-indexed count
+
+              payrollNames[targetIndex] = [f.name];
+              regValues[targetIndex] = [0];
+              otValues[targetIndex] = [0];
+          }
+
+          // Write appendData directly to the sheet
+          var appendColStart = Math.max(1, config.nameCol - 2);
+          payrollDropSheet.getRange(appendRowIndex + 1, appendColStart, appendData.length, 4).setValues(appendData);
+
+          payrollLastRow = payrollNames.length;
+
+          // Re-pull the ranges to match updated payrollLastRow
+          regRange = payrollDropSheet.getRange(1, config.regCol, payrollLastRow, 1);
+          otRange = payrollDropSheet.getRange(1, config.otCol, payrollLastRow, 1);
+      }
+  }
+
 
   function updateHours(name, hours) {
     if (!name || hours === "" || hours === null || hours === undefined) return;
