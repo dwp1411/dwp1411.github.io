@@ -163,6 +163,71 @@
 
         /* Hide Slides initially */
         .all-slides { display: none; width: 100%; flex-direction: column; align-items: center; gap: 40px; }
+
+        /* Print Button */
+        #print-btn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #deff9a;
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Urbanist', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 1000;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #print-btn:hover {
+            background-color: #c9e887;
+            transform: translateY(-2px);
+        }
+        #print-btn i {
+            margin-right: 8px;
+        }
+
+        /* Print Optimization */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+            body {
+                background-color: #111 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                margin: 0;
+                padding: 0;
+                display: block;
+            }
+            #setup-screen, #print-btn {
+                display: none !important;
+            }
+            #slides-container.all-slides {
+                display: block !important;
+                gap: 0;
+            }
+            .slide-container {
+                page-break-after: always;
+                page-break-inside: avoid;
+                break-after: page;
+                margin: 0;
+                box-shadow: none;
+                border: none;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+            }
+            /* Remove background graphics for cleaner print if necessary, but keep the dark theme */
+            .slide-container::before {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -180,6 +245,9 @@
 
     <!-- Slides Container -->
     <div id="slides-container" class="all-slides"></div>
+
+    <!-- Print Button -->
+    <button id="print-btn" onclick="window.print()"><i class="fas fa-file-pdf"></i> Download PDF</button>
 
     <script>
         function generateSlideshow() {
@@ -341,6 +409,9 @@
             // Hide setup, show slides
             document.getElementById('setup-screen').style.display = 'none';
             container.style.display = 'flex';
+
+            // Show print button
+            document.getElementById('print-btn').style.display = 'block';
         }
     </script>
 
