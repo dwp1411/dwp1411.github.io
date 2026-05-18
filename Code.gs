@@ -35,46 +35,64 @@ function getSlideshowData(weekNumber) {
     }
   }
 
+  var warningMessage = null;
+
   // Find the folder for the week in the parent folder
   var parentFolder = DriveApp.getFolderById(parentFolderId);
-  var weekFolderIter = parentFolder.searchFolders('title contains "Week ' + weekNumber + '"');
+  // Search using just the number to be more forgiving with "Week12" vs "Week 12"
+  var weekFolderIter = parentFolder.searchFolders('title contains "' + weekNumber + '"');
 
-  if (weekFolderIter.hasNext()) {
-    var weekFolder = weekFolderIter.next();
-    var subFoldersIter = weekFolder.getFolders();
+  var foundWeekFolder = null;
+  while (weekFolderIter.hasNext()) {
+    var folder = weekFolderIter.next();
+    // Verify it actually matches the week number via regex to avoid "1" matching "12"
+    var match = folder.getName().match(/\d+/);
+    if (match && match[0] == weekNumber) {
+      foundWeekFolder = folder;
+      break;
+    }
+  }
+
+  if (foundWeekFolder) {
+    var subFoldersIter = foundWeekFolder.getFolders();
 
     while (subFoldersIter.hasNext()) {
       var subFolder = subFoldersIter.next();
       var subFolderName = subFolder.getName();
 
-      // Try to match subfolder to a zone. For instance, subfolder name might be "1", "Zone 1", etc.
-      // Match if zoneName contains the number from the subfolder name, or if they match exactly.
-      var matchedZone = null;
-      for (var j = 0; j < zones.length; j++) {
-        // Simple match: if subfolder name is in the zone string (e.g. "1" is in "Zone 1")
-        if (zones[j].zone.toString().indexOf(subFolderName) !== -1 || subFolderName.indexOf(zones[j].zone.toString()) !== -1) {
-          matchedZone = zones[j];
-          break;
-        }
-      }
+      // Extract the number from the subfolder name (e.g. "Zone 1" -> "1")
+      var subfolderMatch = subFolderName.match(/\d+/);
+      var subfolderNum = subfolderMatch ? subfolderMatch[0] : null;
 
-      if (matchedZone) {
-        var filesIter = subFolder.getFiles();
-        while (filesIter.hasNext()) {
-          var file = filesIter.next();
-          // Verify it's an image
-          var mimeType = file.getMimeType();
-          if (mimeType.indexOf('image') !== -1) {
-            // Memory: use thumbnail url format
-            matchedZone.images.push('https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1920-h1080');
+      if (subfolderNum) {
+        var matchedZone = null;
+        for (var j = 0; j < zones.length; j++) {
+          var zoneStr = zones[j].zone.toString();
+          var zoneMatch = zoneStr.match(/\d+/);
+          var zoneNum = zoneMatch ? zoneMatch[0] : null;
+
+          if (zoneNum === subfolderNum) {
+            matchedZone = zones[j];
+            break;
+          }
+        }
+
+        if (matchedZone) {
+          var filesIter = subFolder.getFiles();
+          while (filesIter.hasNext()) {
+            var file = filesIter.next();
+            var mimeType = file.getMimeType();
+            if (mimeType.indexOf('image') !== -1) {
+              matchedZone.images.push('https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1920-h1080');
+            }
           }
         }
       }
     }
   } else {
     // Return a warning but still send the data if no folder found
-    return { error: 'Folder for Week ' + weekNumber + ' not found in Drive.', data: zones };
+    warningMessage = 'Folder for Week ' + weekNumber + ' not found in Drive. Pictures will not be shown.';
   }
 
-  return { success: true, data: zones, weekNumber: weekNumber };
+  return { success: true, data: zones, weekNumber: weekNumber, warning: warningMessage };
 }

@@ -224,10 +224,18 @@
             var container = document.getElementById('slides-container');
             container.innerHTML = ''; // clear previous
 
+            var warningDisplay = '';
+            if (response.warning) {
+                warningDisplay = `<div style="background-color: #ff823a; color: #fff; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;">
+                                    <i class="fas fa-exclamation-circle"></i> ${response.warning}
+                                  </div>`;
+            }
+
             // 1. Title Slide
             container.innerHTML += `
                 <div class="slide-container">
                     <div style="text-align: left; width: 100%;">
+                        ${warningDisplay}
                         <h1>Week ${weekNumber} <span>Operational Review</span></h1>
                         <p class="subtitle">Zone-by-Zone Audit Findings & Corrective Actions</p>
                     </div>
