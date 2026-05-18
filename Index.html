@@ -112,6 +112,19 @@
 
         /* Zone Layout */
         .zone-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; width: 100%; align-items: center; }
+        .zone-owner {
+            position: absolute;
+            top: 60px;
+            right: 60px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #deff9a;
+            background: #222;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            z-index: 10;
+        }
         .zone-info h2 { font-size: 64px; color: #deff9a; margin-bottom: 10px; }
         .zone-info .score-badge {
             display: inline-block;
@@ -324,6 +337,8 @@
                     criticalItems.push({ zone: item.zone, notes: item.notes });
                 }
 
+                var ownerHtml = item.owner ? `<div class="zone-owner"><i class="fas fa-user"></i> ${item.owner}</div>` : '';
+
                 // Handle Image Grid layout
                 var imagesHtml = '';
                 var gridClass = 'grid-1';
@@ -349,6 +364,7 @@
 
                 var slideHtml = `
                     <div class="slide-container">
+                        ${ownerHtml}
                         <div class="content-area">
                             <div class="zone-layout ${warningClass}">
                                 <div class="zone-info">

@@ -24,12 +24,14 @@ function getSlideshowData(weekNumber) {
     var zoneName = data[i][2];
     var score = data[i][3];
     var notes = data[i][4];
+    var owner = data[i][5];
 
     if (zoneName) {
       zones.push({
         zone: String(zoneName).trim(),
         score: score,
         notes: notes,
+        owner: owner ? String(owner).trim() : '',
         images: []
       });
     }
