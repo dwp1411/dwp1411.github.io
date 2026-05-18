@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operational Zone Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* THE SETUP */
+        * { box-sizing: border-box; }
+        body {
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px 0;
+            font-family: 'Urbanist', sans-serif;
+        }
+
+        /* INITIAL SETUP SCREEN */
+        #setup-screen {
+            background-color: #000;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            padding: 40px;
+            text-align: center;
+            margin-top: 100px;
+            color: #f5f5f5;
+        }
+        #setup-screen h1 { margin-bottom: 20px; font-size: 32px; }
+        #setup-screen input {
+            font-size: 24px;
+            padding: 10px;
+            width: 150px;
+            text-align: center;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #222;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        #setup-screen button {
+            font-size: 20px;
+            padding: 10px 30px;
+            background-color: #deff9a;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #setup-screen button:hover { background-color: #c9e887; }
+        #loading { display: none; color: #deff9a; margin-top: 20px; font-size: 18px; }
+        #error-msg { color: #ff823a; margin-top: 20px; font-size: 18px; display: none; }
+
+        /* SLIDESHOW CONTAINER */
+        #slideshow {
+            display: none;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .slide-container {
+            align-items: flex-start;
+            background-color: #000;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            height: 720px;
+            justify-content: center;
+            overflow: hidden;
+            padding: 60px;
+            position: relative;
+            width: 1280px;
+            border: 1px solid #333;
+        }
+
+        /* Abstract Background Elements */
+        .slide-container::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            right: -5%;
+            width: 40%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(222, 255, 154, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .slide-container > * { position: relative; z-index: 1; }
+
+        /* TYPOGRAPHY */
+        h1, h2, h3 { color: #f5f5f5; font-weight: 500; margin: 0; line-height: 1.1; }
+        p, li { color: #daffde; font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.6; }
+
+        h1 { font-size: 72px; letter-spacing: -2px; }
+        h1 span { color: #deff9a; }
+        .subtitle { font-size: 24px; color: #daffde; opacity: 0.8; margin-top: 20px; }
+
+        /* LAYOUTS */
+        .content-area { flex-grow: 1; width: 100%; display: flex; align-items: center; justify-content: center; }
+
+        /* Zone Layout */
+        .zone-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; width: 100%; align-items: center; }
+        .zone-info h2 { font-size: 64px; color: #deff9a; margin-bottom: 10px; }
+        .zone-info .score-badge {
+            display: inline-block;
+            background: #222;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            border: 1px solid #deff9a;
+            color: #deff9a;
+        }
+        .zone-info .notes { font-size: 28px; line-height: 1.5; background: #111; padding: 30px; border-radius: 12px; border: 1px solid #222; }
+
+        /* Safety/Critical Warning Specifics */
+        .safety-warning { border-left: 6px solid #ff823a !important; padding-left: 20px; }
+        .safety-warning .zone-info h2 { color: #ff823a !important; }
+        .safety-warning .score-badge { border-color: #ff823a; color: #ff823a; }
+        .warning-text { color: #ff823a; font-weight: bold; display: block; margin-top: 20px; font-size: 22px; }
+
+        /* Image Grid Wrapper */
+        .image-wrapper {
+            width: 100%;
+            height: 450px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px dashed #555;
+            background: #1a1a1a;
+            display: grid;
+            gap: 10px;
+            align-content: center;
+            justify-content: center;
+        }
+        .image-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Dynamic Grid Layouts */
+        .grid-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+        .grid-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+        .grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .grid-more { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+        .image-wrapper i { font-size: 48px; color: #555; text-align: center; }
+        .placeholder-text { color: #555; font-family: 'Inter', sans-serif; font-size: 18px; margin-top: 15px; text-align: center; padding: 0 20px; }
+
+        /* Summary Slide */
+        .summary-notes { font-size: 24px; max-width: 800px; margin: 0 auto 15px auto; text-align: left; background: #111; padding: 15px; border-radius: 8px; border-left: 4px solid #ff823a; }
+        .summary-zone { font-weight: bold; color: #ff823a; }
+
+        /* Hide Slides initially */
+        .all-slides { display: none; width: 100%; flex-direction: column; align-items: center; gap: 40px; }
+    </style>
+</head>
+<body>
+
+    <!-- Setup Screen -->
+    <div id="setup-screen">
+        <h1>Operational Zone Review Setup</h1>
+        <p>Enter the Week Number (e.g., 12)</p>
+        <input type="number" id="week-input" min="1" value="12">
+        <br>
+        <button onclick="generateSlideshow()">Generate Slideshow</button>
+        <div id="loading"><i class="fas fa-spinner fa-spin"></i> Fetching data and images...</div>
+        <div id="error-msg"></div>
+    </div>
+
+    <!-- Slides Container -->
+    <div id="slides-container" class="all-slides"></div>
+
+    <script>
+        function generateSlideshow() {
+            var weekNum = document.getElementById('week-input').value;
+            if(!weekNum) {
+                showError("Please enter a week number.");
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+            document.querySelector('#setup-screen button').disabled = true;
+
+            // Call Apps Script function
+            google.script.run
+                .withSuccessHandler(renderSlideshow)
+                .withFailureHandler(function(err) {
+                    showError("Error: " + err.message);
+                })
+                .getSlideshowData(weekNum);
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            var errorDiv = document.getElementById('error-msg');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            document.querySelector('#setup-screen button').disabled = false;
+        }
+
+        function renderSlideshow(response) {
+            document.getElementById('loading').style.display = 'none';
+            document.querySelector('#setup-screen button').disabled = false;
+
+            if(response.error && !response.data) {
+                showError(response.error);
+                return;
+            }
+
+            var data = response.data;
+            var weekNumber = response.weekNumber;
+            var container = document.getElementById('slides-container');
+            container.innerHTML = ''; // clear previous
+
+            // 1. Title Slide
+            container.innerHTML += `
+                <div class="slide-container">
+                    <div style="text-align: left; width: 100%;">
+                        <h1>Week ${weekNumber} <span>Operational Review</span></h1>
+                        <p class="subtitle">Zone-by-Zone Audit Findings & Corrective Actions</p>
+                    </div>
+                </div>
+            `;
+
+            var criticalItems = [];
+
+            // 2. Zone Slides
+            data.forEach(function(item) {
+                var isCritical = item.score == 1 || item.score == 2;
+                var warningClass = isCritical ? 'safety-warning' : '';
+                var warningIcon = isCritical ? '<i class="fas fa-exclamation-triangle"></i>' : '';
+                var warningHtml = isCritical ? '<span class="warning-text">CRITICAL ACTION REQUIRED</span>' : '';
+                var borderStyle = isCritical ? 'border-color: #ff823a;' : '';
+
+                if (isCritical) {
+                    criticalItems.push({ zone: item.zone, notes: item.notes });
+                }
+
+                // Handle Image Grid layout
+                var imagesHtml = '';
+                var gridClass = 'grid-1';
+                var numImages = item.images.length;
+
+                if (numImages === 0) {
+                    imagesHtml = `
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
+                            <i class="fas fa-image" style="${isCritical ? 'color:#ff823a;' : ''}"></i>
+                            <div class="placeholder-text" style="${isCritical ? 'color:#ff823a;' : ''}">No images found for ${item.zone}</div>
+                        </div>
+                    `;
+                } else {
+                    if (numImages === 2) gridClass = 'grid-2';
+                    else if (numImages === 3) gridClass = 'grid-3';
+                    else if (numImages === 4) gridClass = 'grid-4';
+                    else if (numImages > 4) gridClass = 'grid-more';
+
+                    item.images.forEach(function(imgUrl) {
+                        imagesHtml += `<img src="${imgUrl}" alt="${item.zone} image">`;
+                    });
+                }
+
+                var slideHtml = `
+                    <div class="slide-container">
+                        <div class="content-area">
+                            <div class="zone-layout ${warningClass}">
+                                <div class="zone-info">
+                                    <h2>${item.zone} ${warningIcon}</h2>
+                                    <div class="score-badge">Score: ${item.score} / 5</div>
+                                    <div class="notes">
+                                        "${item.notes}"
+                                        ${warningHtml}
+                                    </div>
+                                </div>
+                                <div class="image-wrapper ${gridClass}" style="${borderStyle}">
+                                    ${imagesHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += slideHtml;
+            });
+
+            // 3. Action Items / Summary Slide
+            if (criticalItems.length > 0) {
+                var summaryHtml = `
+                    <div class="slide-container">
+                        <div class="content-area">
+                            <div style="text-align: center; width: 100%;">
+                                <h2 style="font-size: 80px;">Action <span>Items</span></h2>
+                                <div style="width: 100px; height: 6px; background: #deff9a; margin: 40px auto;"></div>
+                `;
+
+                criticalItems.forEach(function(c) {
+                    summaryHtml += `<div class="summary-notes"><span class="summary-zone">${c.zone}:</span> ${c.notes}</div>`;
+                });
+
+                summaryHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += summaryHtml;
+            } else {
+                // If no critical items, show a positive summary
+                 var summaryHtml = `
+                    <div class="slide-container">
+                        <div class="content-area">
+                            <div style="text-align: center; width: 100%;">
+                                <h2 style="font-size: 80px;">Audit <span>Complete</span></h2>
+                                <div style="width: 100px; height: 6px; background: #deff9a; margin: 40px auto;"></div>
+                                <p style="font-size: 28px;">No critical action items (Score 1 or 2) found this week.</p>
+                                <p style="font-size: 28px;">Great job maintaining the zones!</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += summaryHtml;
+            }
+
+            // Hide setup, show slides
+            document.getElementById('setup-screen').style.display = 'none';
+            container.style.display = 'flex';
+        }
+    </script>
+
+</body>
+</html>
