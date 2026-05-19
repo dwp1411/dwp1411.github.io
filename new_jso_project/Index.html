@@ -877,7 +877,9 @@
 
 
         google.script.run
-          .withSuccessHandler(() => onSuccess('jsoForm', 'submitBtn', 'Observation successfully recorded!'))
+          .withSuccessHandler(() => {
+              onSuccess('jsoForm', 'submitBtn', 'Observation successfully recorded!');
+          })
           .withFailureHandler((err) => onError(err, 'submitBtn', 'Submit Observation'))
           .submitObservation(data);
       });
@@ -981,7 +983,6 @@
         google.script.run
           .withSuccessHandler(() => {
               onSuccess('jsoPdfForm', 'submitPdfBtn', 'JSO Report generated and emailed successfully!');
-              setTimeout(() => { location.reload(); }, 3000); // Reload the app to clean the state
           })
           .withFailureHandler((err) => onError(err, 'submitPdfBtn', 'Submit & Send PDF'))
           .processJSO(data); // <--- Using the new PDF function from earlier
@@ -1038,7 +1039,23 @@
 
         msg.textContent = successMsg;
         msg.className = "message success";
-        msg.style.display = "block";
+
+        // Reset tracking vars for JSO if applicable
+        if (formId === 'jsoPdfForm') {
+            trackingLogs = [];
+            totalCount = 0;
+            document.getElementById('uph-display').style.display = 'none';
+            document.getElementById('startTimerBtn').style.display = 'inline-block';
+            document.getElementById('stopTimerBtn').disabled = true;
+            document.getElementById('jso-function').disabled = false;
+            document.getElementById('action-logging-area').style.display = 'none';
+            document.getElementById('stopwatch').textContent = "00:00";
+            if (typeof clearSignature === "function") clearSignature();
+        }
+
+        // Route back to landing
+        goBack('landing-view');
+        msg.style.display = "block"; // Re-show since hideAllViews hides it
 
         setTimeout(() => { msg.style.display = "none"; }, 4000);
       }
