@@ -96,10 +96,24 @@ function updateExistingDatabase() {
 }
 
 
-function logActivity(data) {
+function logActivity(data, movementLogs) {
   try {
     const dataSpreadsheet = SpreadsheetApp.openById(JSO_DATA_SHEET_ID);
     let logSheet = dataSpreadsheet.getSheetByName('Activity Log');
+    let rawDataSheet = dataSpreadsheet.getSheetByName('Raw Data');
+
+    // Create raw data sheet if it doesn't exist
+    if (!rawDataSheet) {
+        rawDataSheet = dataSpreadsheet.insertSheet('Raw Data');
+    }
+
+    // Always check and enforce the header schema
+    const rawHeaders = [['Date', 'Shared Timestamp', 'Associate', 'Function', 'Action Name', 'Start Time', 'End Time', 'Duration (Seconds)', 'Count']];
+    const currentRawHeaders = rawDataSheet.getRange(1, 1, 1, rawHeaders[0].length).getValues()[0];
+    if (currentRawHeaders.join() !== rawHeaders[0].join()) {
+        rawDataSheet.getRange(1, 1, 1, rawHeaders[0].length).setValues(rawHeaders).setFontWeight('bold').setBackground('#d9d9d9');
+        rawDataSheet.setFrozenRows(1);
+    }
 
     // Create sheet if it doesn't exist
     if (!logSheet) {
@@ -154,8 +168,11 @@ function logActivity(data) {
     // Format activity logs cleanly
     let activityText = (data.activityLogs || "").replace(/<li>/g, "").replace(/<\/li>/g, "; ").trim();
 
+    // Use the shared timestamp if generated, otherwise create a new one
+    const sharedTimestamp = data.sharedTimestamp || new Date().toISOString();
+
     const rowData = [
-      new Date(),
+      sharedTimestamp,
       data.leader || '',
       data.associate || '',
       data.function || '',
@@ -182,6 +199,23 @@ function logActivity(data) {
     ];
 
     logSheet.appendRow(rowData);
+
+    // Process movement logs into Raw Data
+    if (movementLogs && movementLogs.length > 0) {
+        const rawRows = movementLogs.map(log => [
+            log.date || '',
+            log.sharedTimestamp || sharedTimestamp,
+            log.associate || '',
+            log.function || '',
+            log.actionName || '',
+            log.startTime || '',
+            log.endTime || '',
+            log.durationSeconds || 0,
+            log.count || 0
+        ]);
+        // Append all rows at once to be efficient
+        rawDataSheet.getRange(rawDataSheet.getLastRow() + 1, 1, rawRows.length, rawRows[0].length).setValues(rawRows);
+    }
 
   } catch(e) {
     Logger.log("Failed to log activity: " + e.toString());
@@ -448,8 +482,10 @@ function submitCoaching(data) {
 
 
 // UPDATED: processJSO replaces submitJobSafetyObservation
-function processJSO(data) {
+function processJSO(payload) {
   try {
+    const data = payload.summaryRow;
+    const movementLogs = payload.movementLogs;
     const timestamp = new Date();
 
     // Calculate the Actual UPH based on their time and pieces/pallets
@@ -556,7 +592,7 @@ function processJSO(data) {
     });
 
 
-    logActivity(data);
+    logActivity(data, movementLogs);
 
 
     return { success: true };

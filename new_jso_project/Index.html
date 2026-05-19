@@ -785,13 +785,16 @@
 
 
       function logPalletMovement() {
+          const startSeconds = lastLogSeconds;
           const diffSeconds = seconds - lastLogSeconds;
           lastLogSeconds = seconds;
 
           totalCount++; trackingLogs.push({
              type: 'Pallet Movement',
+             startTime: formatTime(startSeconds),
              time: formatTime(seconds),
-             timeSinceLast: formatTime(diffSeconds)
+             timeSinceLast: formatTime(diffSeconds),
+             durationSeconds: diffSeconds
           });
 
           document.getElementById('last-log-msg').textContent = `Logged movement at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
@@ -802,18 +805,19 @@
           const piecesInput = document.getElementById('pieces-picked');
           const count = parseInt(piecesInput.value, 10);
 
-
           if(isNaN(count) || count <= 0) return;
 
-
+          const startSeconds = lastLogSeconds;
           const diffSeconds = seconds - lastLogSeconds;
           lastLogSeconds = seconds;
 
           totalCount += count; trackingLogs.push({
              type: 'Pieces Picked',
              count: count,
+             startTime: formatTime(startSeconds),
              time: formatTime(seconds),
-             timeSinceLast: formatTime(diffSeconds)
+             timeSinceLast: formatTime(diffSeconds),
+             durationSeconds: diffSeconds
           });
 
           document.getElementById('last-log-msg').textContent = `Logged ${count} pieces at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
@@ -929,7 +933,11 @@
         const fbNotes = document.getElementById('fb-notes').value || "None";
         const signatureBase64 = typeof signatureEmpty !== 'undefined' && !signatureEmpty && typeof canvas !== 'undefined' && canvas ? canvas.toDataURL("image/png") : null;
 
-        const data = {
+        // Generate a shared ID or timestamp client-side to ensure the links match exactly
+        const sharedTimestamp = new Date().toISOString();
+
+        const summaryRow = {
+            sharedTimestamp: sharedTimestamp, // new field to link
             leader: leader,
             associate: associate,
             duration: document.getElementById('stopwatch').textContent,
@@ -945,6 +953,24 @@
             fbEnvironment: fbEnvironment,
             fbNotes: fbNotes,
             signature: signatureBase64
+        };
+
+        const currentDate = new Date().toLocaleDateString();
+        const movementLogs = trackingLogs.map(log => ({
+            date: currentDate,
+            associate: associate,
+            function: func,
+            sharedTimestamp: sharedTimestamp,
+            actionName: log.type,
+            startTime: log.startTime,
+            endTime: log.time,
+            durationSeconds: log.durationSeconds,
+            count: log.count || 1
+        }));
+
+        const data = {
+            summaryRow: summaryRow,
+            movementLogs: movementLogs
         };
 
 
