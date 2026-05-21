@@ -27,7 +27,31 @@
 
       <div id="landing-view" style="display: none;">
           <h1 style="text-align: center; color: #0056b3; margin-top: 0;">Safety & Performance Observation</h1>
-          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select a path below to begin.</p>
+          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select your site and a path below to begin.</p>
+
+          <div class="form-group" style="margin-bottom: 30px;">
+
+            <label for="site-selection" style="text-align: center; display: block; font-weight: bold;">Select Site</label>
+
+            <select id="site-selection" name="site-selection" onchange="onSiteSelected()" style="max-width: 300px; margin: 0 auto; display: block;">
+
+              <option value="" disabled selected>Select your site...</option>
+
+              <option value="Naperville">Naperville</option>
+
+              <option value="Tracy">Tracy</option>
+
+              <option value="Cranbury">Cranbury</option>
+
+              <option value="Romeoville">Romeoville</option>
+
+              <option value="Dallas">Dallas</option>
+
+              <option value="Newton">Newton</option>
+
+            </select>
+
+          </div>
 
 
 
@@ -368,6 +392,7 @@
               return;
           }
 
+
           const targetInput = document.getElementById(targetId);
           const originalText = btn.innerHTML;
 
@@ -624,25 +649,76 @@
             }
           } else {
              // STANDARD APP MODE: Load hierarchy
-            google.script.run
-              .withSuccessHandler(function(data) {
-                 staffHierarchy = data;
-                 // Hide loader, show landing page
-                 document.getElementById('loading-area').style.display = 'none';
-                 document.getElementById('landing-view').style.display = 'block';
-                 populateGlobalLeaders();
-              })
-              .withFailureHandler(showInitError)
-              .getHierarchy();
+            // Do not load hierarchy yet, wait for site selection
+
+            document.getElementById("loading-area").style.display = "none";
+
+            document.getElementById("landing-view").style.display = "block";
+
+
+
+
+
+
+
+
+
           }
         });
       });
+
+      function onSiteSelected() {
+
+          const site = document.getElementById("site-selection").value;
+
+          if (!site) return;
+
+
+
+          document.getElementById("landing-view").style.display = "none";
+
+          document.getElementById("loading-area").style.display = "block";
+
+
+
+          google.script.run
+
+            .withSuccessHandler(function(data) {
+
+               staffHierarchy = data;
+
+               document.getElementById("loading-area").style.display = "none";
+
+               document.getElementById("landing-view").style.display = "block";
+
+               populateGlobalLeaders();
+
+            })
+
+            .withFailureHandler(function(error) {
+
+               showInitError(error);
+
+               document.getElementById("loading-area").style.display = "none";
+
+               document.getElementById("landing-view").style.display = "block";
+
+               document.getElementById("site-selection").value = "";
+
+            })
+
+            .getHierarchy(site);
+
+      }
 
 
       function populateGlobalLeaders() {
         const globalLeaderSelect = document.getElementById('conv-leader');
         const jsoLeaderSelect = document.getElementById('jso-leader');
 
+        globalLeaderSelect.innerHTML = "<option value=\"\" disabled selected>Select a Leader...</option>";
+
+        jsoLeaderSelect.innerHTML = "<option value=\"\" disabled selected>Select a Leader...</option>";
         if (Object.keys(staffHierarchy).length === 0) {
            showInitError("No staff data found in the Attendance Sheet.");
            return;
@@ -699,8 +775,14 @@
 
 
       function selectPath(path) {
+          const site = document.getElementById("site-selection").value;
+          if (!site) {
+              alert("Please select your site first.");
+              return;
+          }
+
           hideAllViews();
-          document.getElementById(path + '-view').style.display = 'block';
+          document.getElementById(path + "-view").style.display = "block";
       }
 
       function goBack(viewId) {
@@ -866,6 +948,7 @@
           topic: topic,
           leader: leader,
           associate: associate,
+          site: document.getElementById("site-selection").value,
           type: type,
           notes: notes
         };
@@ -926,6 +1009,8 @@
                    notes: noteArea.value
                });
             }
+
+
         });
 
         const fbPace = document.querySelector('input[name="fb-pace"]:checked')?.value || "N/A";
@@ -942,6 +1027,7 @@
             sharedTimestamp: sharedTimestamp, // new field to link
             leader: leader,
             associate: associate,
+            site: document.getElementById("site-selection").value,
             duration: document.getElementById('stopwatch').textContent,
             checklistResults: checklistResults,
             function: func,
@@ -961,6 +1047,7 @@
         const movementLogs = trackingLogs.map(log => ({
             date: currentDate,
             associate: associate,
+            site: document.getElementById("site-selection").value,
             function: func,
             sharedTimestamp: sharedTimestamp,
             actionName: log.type,
