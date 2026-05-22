@@ -1,0 +1,318 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div class="background-container">
+      <div class="bg-image bg-1"></div>
+      <div class="bg-image bg-2"></div>
+      <div class="bg-image bg-3"></div>
+    </div>
+
+
+    <div class="container">
+
+      <div id="messageArea" class="message"></div>
+
+
+      <div id="loading-area" class="spinner-container" style="display: block; text-align: center;">
+        <div class="initial-loader"></div>
+        <p style="color: #666; font-size: 14px;">Loading...</p>
+      </div>
+
+
+      <div id="landing-view" style="display: none;">
+          <h1 style="text-align: center; color: #0056b3; margin-top: 0;">Safety & Performance Observation</h1>
+          <p style="text-align: center; color: #555; margin-bottom: 25px;">Welcome to the Observation & Coaching portal. Please select your site and a path below to begin.</p>
+
+          <div class="form-group" style="margin-bottom: 30px;">
+
+            <label for="site-selection" style="text-align: center; display: block; font-weight: bold;">Select Site</label>
+
+            <select id="site-selection" name="site-selection" style="max-width: 300px; margin: 0 auto; display: block;">
+
+              <option value="" disabled selected>Select your site...</option>
+
+              <option value="Naperville">Naperville</option>
+
+              <option value="Tracy">Tracy</option>
+
+              <option value="Cranbury">Cranbury</option>
+
+              <option value="Romeoville">Romeoville</option>
+
+              <option value="Dallas">Dallas</option>
+
+              <option value="Newton">Newton</option>
+
+            </select>
+
+          </div>
+
+
+
+
+          <div class="split-buttons">
+            <button class="nav-button" onclick="selectPath('jso-tracking')">Job Safety Observation</button>
+            <button class="nav-button" onclick="selectPath('conversations')">Conversations</button>
+          </div>
+      </div>
+
+
+      <div id="jso-tracking-view" style="display: none;">
+          <button class="back-btn" onclick="goBack('landing-view')" style="width:auto; padding: 5px 15px; float:left;">&larr; Back</button>
+          <div style="clear:both;"></div>
+          <h2>Job Safety Observation</h2>
+
+
+          <div class="form-group">
+            <label for="jso-leader">Select Leader</label>
+            <select id="jso-leader" name="jso-leader" onchange="updateAssociates('jso-leader', 'jso-associate')" required>
+              <option value="" disabled selected>Select a Leader...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="jso-associate">Select Associate</label>
+            <select id="jso-associate" name="jso-associate" required disabled>
+              <option value="" disabled selected>First select a Leader</option>
+            </select>
+          </div>
+
+
+          <div class="form-group">
+            <label>Function:</label>
+            <select id="jso-function" onchange="handleFunctionSelect()">
+              <option value="" disabled selected>Select a Function...</option>
+              <optgroup label="Pallet Movements">
+                <option value="Put away" data-uph="20" data-type="pallet">Put away</option>
+                <option value="Inbound Shuttle" data-uph="15" data-type="pallet">Inbound Shuttle</option>
+                <option value="Furniture Picking" data-uph="18" data-type="pallet">Furniture Picking</option>
+                <option value="Outbound Shuttle" data-uph="15" data-type="pallet">Outbound Shuttle</option>
+                <option value="Furniture Loading" data-uph="12" data-type="pallet">Furniture Loading</option>
+              </optgroup>
+              <optgroup label="Piece Movements">
+                <option value="Furniture Receiving" data-uph="50" data-type="piece">Furniture Receiving</option>
+                <option value="HSW Receiving" data-uph="150" data-type="piece">HSW Receiving</option>
+                <option value="Returns" data-uph="45" data-type="piece">Returns</option>
+                <option value="Processing" data-uph="80" data-type="piece">Processing</option>
+                <option value="Rewrap" data-uph="30" data-type="piece">Rewrap</option>
+                <option value="HSW MC Store Picking" data-uph="120" data-type="piece">HSW MC Store Picking</option>
+                <option value="HSW BP Store Picking" data-uph="100" data-type="piece">HSW BP Store Picking</option>
+                <option value="DSS Labeling" data-uph="200" data-type="piece">DSS Labeling</option>
+                <option value="SS Packing" data-uph="85" data-type="piece">SS Packing</option>
+                <option value="PTS" data-uph="90" data-type="piece">PTS</option>
+                <option value="Home Delivery" data-uph="40" data-type="piece">Home Delivery</option>
+                <option value="HSW Loading" data-uph="110" data-type="piece">HSW Loading</option>
+              </optgroup>
+            </select>
+          </div>
+
+
+          <div id="uph-display" style="display:none; text-align:center; margin-bottom: 15px;">
+            <h3 style="margin:0; font-size:16px;">Expected UPH: <span id="uph-value" style="color:#0056b3;">0</span></h3>
+          </div>
+
+
+          <div class="timer-display" id="stopwatch">00:00</div>
+
+          <div id="action-logging-area" style="display:none; margin-bottom: 20px;">
+            <div id="pallet-movement-area" style="display:none;">
+              <button type="button" onclick="logPalletMovement()" style="background-color:#17a2b8;">Log Pallet Movement</button>
+            </div>
+            <div id="piece-picking-area" style="display:none;">
+              <div class="form-group">
+                <input type="number" id="pieces-picked" placeholder="Enter number of pieces">
+              </div>
+              <button type="button" onclick="logPiecesPicked()" style="background-color:#17a2b8;">Log Pieces Picked</button>
+            </div>
+            <p id="last-log-msg" style="text-align:center; font-size:12px; color:#666; margin-top:5px;"></p>
+          </div>
+
+          <div class="timer-btns">
+            <button type="button" id="startTimerBtn" onclick="startTimer()" style="background-color: #28a745;">Start</button>
+            <button type="button" id="stopTimerBtn" onclick="stopTimer()" style="background-color: #dc3545;" disabled>Stop</button>
+          </div>
+
+
+
+
+
+          <div id="dynamic-checklist-area"></div>
+
+
+<button type="button" class="btn btn-jso" style="width: 100%; margin-top: 15px;" onclick="goToJsoNotes()">Continue to Associate Feedback</button>
+      </div>
+
+
+      <div id="jso-notes-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('jso-tracking-view')">← Back</button>
+        <h2>Associate Feedback</h2>
+
+        <form id="jsoPdfForm">
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel you can maintain the pace performed for your entire shift?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-pace" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-pace" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel you have all the necessary skills required to do the job?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-skills" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-skills" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel the need for additional training in the prescribed methods or procedures?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-training" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-training" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom:10px;">
+                <label style="margin:0; width: 75%; font-weight:normal;">Do you feel your work environment (Equipment, Facility, Layout, supplies) support the work you do?</label>
+                <div style="width: 25%; display:flex; justify-content:flex-end; gap: 15px;">
+                    <label style="font-weight:normal;"><input type="radio" name="fb-environment" value="Yes" required> Yes</label>
+                    <label style="font-weight:normal;"><input type="radio" name="fb-environment" value="No"> No</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+              <label for="fb-notes">Is there anything that the company could do to help you be more productive in this operation?</label>
+              <div style="position: relative;">
+                  <textarea id="fb-notes" name="fb-notes" placeholder="Feedback notes..." style="width: 100%; padding-right: 40px; border: 1px solid var(--border); border-radius: 4px; min-height: 60px; padding:10px;"></textarea>
+                  <button type="button" onclick="startVoiceRecognition('fb-notes', this)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 18px; cursor: pointer;" title="Voice to Text">🎤</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+                <label>Associate Signature Acknowledgement:</label>
+                <div style="border: 2px solid #333; border-radius: 4px; background: white; margin-bottom: 5px;">
+                    <canvas id="signaturePad" width="400" height="150" style="width: 100%; height: 150px; touch-action: none;"></canvas>
+                </div>
+                <button type="button" onclick="clearSignature()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Clear Signature</button>
+            </div>
+
+            <button type="submit" id="submitPdfBtn">Submit & Send PDF</button>
+        </form>
+      </div>
+
+
+
+
+      <div id="conversations-view" style="display: none;">
+        <button class="back-btn" onclick="goBack('landing-view')">← Back</button>
+        <h2>Conversations</h2>
+
+        <form id="jsoForm">
+            <div class="form-group">
+              <label for="topic">Topic</label>
+              <select id="topic" name="topic" required>
+                  <option value="" disabled selected>Select a Topic...</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Productivity">Productivity</option>
+                  <option value="Quality">Quality</option>
+              </select>
+            </div>
+
+
+            <div class="form-group">
+              <label for="conv-leader">Leader:</label>
+              <select id="conv-leader" name="conv-leader" onchange="updateAssociates('conv-leader', 'conv-assoc')" required>
+                <option value="" disabled selected>Select a Leader...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="conv-assoc">Associate:</label>
+              <select id="conv-assoc" name="conv-assoc" required disabled>
+                <option value="" disabled selected>First select a Leader</option>
+              </select>
+            </div>
+
+
+            <div class="form-group">
+              <label>Observation Type</label>
+              <div class="toggle-container">
+                  <div class="toggle-option">
+                  <input type="radio" id="type-positive" name="type" value="Positive" required>
+                  <label for="type-positive">Positive</label>
+                  </div>
+                  <div class="toggle-option">
+                  <input type="radio" id="type-negative" name="type" value="Negative">
+                  <label for="type-negative">Negative</label>
+                  </div>
+              </div>
+            </div>
+
+
+            <div class="form-group">
+              <label for="notes">Notes / Action Taken</label>
+              <textarea id="notes" name="notes" placeholder="Describe the observation here..." required></textarea>
+            </div>
+
+
+            <button type="submit" id="submitBtn">Submit Observation</button>
+        </form>
+      </div>
+
+
+      <div id="coachingForm" style="display: none;">
+        <h2>Coaching / CCA Record</h2>
+        <p style="text-align: center; color: #555; font-size: 14px;">Complete this form after the coaching conversation.</p>
+
+        <form id="ccaFormRecord">
+            <input type="hidden" id="observationId" name="observationId">
+            <input type="hidden" id="coachingSite" name="coachingSite">
+
+            <div class="form-group">
+              <label>Associate</label>
+              <div id="coachAssociateName" style="padding: 10px; background-color: #f8f9fa; border: 1px solid #ccc; border-radius: 4px; font-weight: bold;"></div>
+            </div>
+
+
+            <div class="form-group">
+              <label>Original Observation Note</label>
+              <div id="coachOriginalNote" style="padding: 10px; background-color: #f8f9fa; border: 1px solid #ccc; border-radius: 4px; font-style: italic; font-size: 14px;"></div>
+            </div>
+
+
+            <div id="dynamicDropdownContainer">
+              </div>
+
+
+            <div class="form-group">
+              <label for="associatePerspective">Associate's Perspective</label>
+              <textarea id="associatePerspective" required placeholder="What did the associate say during the conversation?"></textarea>
+            </div>
+
+
+            <div class="form-group">
+              <label for="actionPlan">Action Plan / Commitment</label>
+              <textarea id="actionPlan" required placeholder="What are the agreed next steps?"></textarea>
+            </div>
+
+
+            <div class="form-group">
+              <label for="leaderNotes">Leader Coaching Notes</label>
+              <textarea id="leaderNotes" required placeholder="Any additional thoughts or follow-up needed?"></textarea>
+            </div>
+
+
+            <button type="submit" id="submitCoachBtn">Submit Coaching Record</button>
+        </form>
+      </div>
+
+
+    <?!= include("JavaScript"); ?>
+  </body>
+</html>

@@ -1,0 +1,279 @@
+<style>
+﻿/* Put all your normal CSS here */
+  :root {
+    --primary: #2b4bbe;
+    --secondary: #f4f6f8;
+    --text: #333;
+    --border: #ccc;
+  }
+
+body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center; /* Centers the card horizontally */
+        align-items: center;     /* Centers the card vertically */
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+
+
+      .container {
+        background-color: rgba(255, 255, 255, 0.92); /* 92% white for glass effect */
+        backdrop-filter: blur(5px);
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        padding: 30px;
+        width: 100%;
+        max-width: 500px; /* Keeps it looking like a neat card */
+      }
+
+
+      /* Adds side-by-side button layout for the home screen */
+      .split-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+
+  /* --- REPLACED BACKGROUND RULES START HERE --- */
+  .background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 768px) {
+    .background-container {
+      flex-direction: row;
+    }
+  }
+
+
+  .bg-image {
+    flex: 1;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+  }
+
+
+  /* This adds the dark overlay so you can still read the text */
+  .bg-image::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+   }
+
+
+ /* --- JSO TRACKING PAGE LAYOUT FIXES --- */
+      .timer-display {
+          font-size: 38px;
+          text-align: center;
+          margin: 15px 0;
+          font-family: monospace;
+          color: #dc3545;
+          font-weight: bold;
+      }
+      .timer-btns {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+      }
+      .timer-btns button {
+          flex: 1; /* This splits the Start and Stop buttons 50/50 */
+          padding: 14px;
+
+      }
+      .checklist {
+          margin-top: 15px;
+          margin-bottom: 20px;
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+      }
+      .checklist label {
+          display: flex;
+          align-items: center;
+          font-weight: 500;
+          font-size: 14px;
+          margin-bottom: 12px;
+          color: #333;
+          cursor: pointer;
+      }
+      .checklist label:last-child {
+          margin-bottom: 0;
+      }
+      .checklist input[type="checkbox"] {
+          margin-right: 12px;
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+      }
+  /* ... the rest of your CSS ... */
+
+
+      /* --- FORM STYLING (To match Picture 2) --- */
+      h2 {
+        text-align: center;
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 24px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+        font-size: 14px;
+      }
+
+      select, input[type="text"], input[type="number"], textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        box-sizing: border-box; /* Ensures padding doesn't affect width */
+        font-family: inherit;
+        font-size: 14px;
+        color: #333;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 100px;
+      }
+
+      /* Primary Blue Submit Button */
+      button[type="submit"], #submitBtn, #submitPdfBtn, #submitCoachBtn {
+        width: 100%;
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        padding: 14px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+        text-transform: uppercase;
+      }
+
+      button[type="submit"]:hover, #submitBtn:hover, #submitPdfBtn:hover, #submitCoachBtn:hover {
+        background-color: #004494;
+      }
+
+      /* Toggle Buttons for Positive/Negative */
+      .toggle-container {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .toggle-option {
+        flex: 1;
+        position: relative;
+      }
+
+      .toggle-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+      }
+
+      .toggle-option label {
+        display: block;
+        text-align: center;
+        padding: 12px;
+        background-color: #f8f9fa;
+        color: #555;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 0;
+        border-right: 1px solid var(--border);
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+
+      .toggle-option:last-child label {
+        border-right: none;
+      }
+
+      .toggle-option input[type="radio"]:checked + label {
+        background-color: #e9ecef;
+        color: #333;
+        box-shadow: inset 0 3px 5px rgba(0,0,0,0.1);
+      }
+
+      /* Navigation/Back buttons */
+      .nav-button {
+        flex: 1;
+        padding: 12px;
+        background-color: #f4f6f8;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .nav-button:hover {
+        background-color: #e2e6ea;
+      }
+
+      .back-btn {
+        background: none;
+        border: none;
+        color: #0056b3;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
+        margin-bottom: 15px;
+        text-decoration: underline;
+      }
+
+
+
+      /* Action Logging Buttons */
+      #action-logging-area button {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        margin-top: 10px;
+        text-transform: uppercase;
+      }
+
+      #action-logging-area button:hover {
+        opacity: 0.9;
+      }
+
+  /* Replaced background images */
+  .bg-1 { background-image: url('https://drive.google.com/thumbnail?id=1CKQxpbk_fX28ME2uEU0jIVS42ZROKbZq&sz=w1920-h1080'); }
+  .bg-2 { background-image: url('https://drive.google.com/thumbnail?id=1nDIcXBz6RCyBdgHDGPIrrb9P6h7AWlJb&sz=w1920-h1080'); }
+  .bg-3 { background-image: url('https://drive.google.com/thumbnail?id=1lclnalaaFNxJUIGDezpbENLTR_swFzLL&sz=w1920-h1080'); }
+</style>
