@@ -281,9 +281,11 @@
             const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
             const note = location.parameters.note ? location.parameters.note[0] : '';
             const topic = location.parameters.topic ? location.parameters.topic[0] : 'Safety';
+            const siteParam = location.parameters.site ? location.parameters.site[0] : "";
 
 
             document.getElementById('observationId').value = obsId;
+            document.getElementById('coachingSite').value = siteParam;
             document.getElementById('coachAssociateName').textContent = assoc;
             document.getElementById('coachOriginalNote').textContent = note;
 
@@ -595,6 +597,7 @@
         const msg = document.getElementById('messageArea');
 
         const topic = document.getElementById('topic').value;
+            const siteParam = location.parameters.site ? location.parameters.site[0] : "";
         const leader = document.getElementById('conv-leader').value;
         const associate = document.getElementById('conv-assoc').value;
         const typePositive = document.getElementById('type-positive').checked;
@@ -745,6 +748,7 @@
 
         const data = {
           id: document.getElementById('observationId').value,
+          site: document.getElementById('coachingSite').value,
           policy: document.getElementById('policyViolated').value,
           perspective: document.getElementById('associatePerspective').value,
           actionPlan: document.getElementById('actionPlan').value,
