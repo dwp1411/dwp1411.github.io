@@ -1,0 +1,823 @@
+<script>
+
+
+
+      // Signature Pad Logic
+      let canvas, ctx;
+      let drawing = false;
+      let signatureEmpty = true;
+
+      function initSignature() {
+          canvas = document.getElementById('signaturePad');
+          if (!canvas) return;
+          ctx = canvas.getContext('2d');
+
+          canvas.addEventListener('mousedown', startDrawing);
+          canvas.addEventListener('mousemove', draw);
+          canvas.addEventListener('mouseup', stopDrawing);
+          canvas.addEventListener('mouseout', stopDrawing);
+
+          // Touch support for mobile
+          canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            startDrawing(e.touches[0]);
+          }, {passive: false});
+          canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            draw(e.touches[0]);
+          }, {passive: false});
+          canvas.addEventListener('touchend', stopDrawing);
+      }
+
+      function startDrawing(e) {
+          drawing = true;
+          signatureEmpty = false;
+          draw(e);
+      }
+
+      function draw(e) {
+          if (!drawing) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#000';
+
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+      }
+
+      function stopDrawing() {
+          drawing = false;
+          ctx.beginPath();
+      }
+
+      function clearSignature() {
+          if(!canvas) return;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          signatureEmpty = true;
+      }
+
+
+      // Speech Recognition
+      let recognition;
+      let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+          recognition = new SpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = false;
+      }
+
+      function startVoiceRecognition(targetId, btn) {
+          if (!recognition) {
+              alert("Voice to text API is not supported in this browser. Please use the microphone button on your phone's native keyboard to dictate.");
+              return;
+          }
+
+
+          const targetInput = document.getElementById(targetId);
+          const originalText = btn.innerHTML;
+
+          recognition.onstart = function() {
+              btn.innerHTML = '🔴';
+              btn.style.color = 'red';
+          };
+
+          recognition.onresult = function(event) {
+              const transcript = event.results[0][0].transcript;
+              if (targetInput.value) {
+                 targetInput.value += ' ' + transcript;
+              } else {
+                 targetInput.value = transcript;
+              }
+          };
+
+          recognition.onerror = function(event) {
+              console.error("Speech error", event.error);
+              alert("Microphone error: " + event.error);
+              btn.innerHTML = originalText;
+              btn.style.color = '';
+          };
+
+          recognition.onend = function() {
+              btn.innerHTML = originalText;
+              btn.style.color = '';
+          };
+
+          recognition.start();
+      }
+
+      let staffHierarchy = {};
+      let functionsList = [];
+
+      const checklistData = {
+  "Putaway": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Aisles Clear of Hazards",
+    "Inspect Pallets for Grade A",
+    "Correct Pallet Putaway (Arrows Up)"
+  ],
+  "Inbound Shuttle": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Inspect Pallets for Soundness"
+  ],
+  "Furniture Picking": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Using the proper technique for moving product",
+    "Keep Aisles Clear of Hazards",
+    "Proper Weight Distribution (Heavy on Bottom)",
+    "Inspect Boxes for Damage"
+  ],
+  "Outbound Shuttle": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Inspect Pallets for Grade A",
+    "Safe Trailer Loading"
+  ],
+  "Furniture Loading": [
+    "Safe Driving & Speeds",
+    "Proper PPE Usage",
+    "Keep Area Clear of Hazards",
+    "Using the proper technique for moving product",
+    "Inspect Pallets for Soundness",
+    "Safe Removal of Pallets/Trash"
+  ],
+  "HSW Receiving": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Furniture Receiving": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Using the proper technique for moving product",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Returns": [
+    "Pre-Open Dock Door Visual Check",
+    "Update Dock Communication Lights",
+    "Safe Lifting Techniques",
+    "Keep Area Clear of Hazards"
+  ],
+  "Rewrap": [
+    "Safe Lifting Techniques",
+    "Safe Utility Knife Use (Cut Away)",
+    "Handle Glass/Mirrors Gently",
+    "Keep Area Free of Tripping Hazards"
+  ],
+  "DSS Labeling": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Onto Conveyor",
+    "Discard Label Backings Immediately",
+    "Focused on Task Without Distraction",
+    "Organize & Clear Workspace"
+  ],
+  "SS Packing": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Discard Label Backings Immediately",
+    "Focused on Task Without Distraction",
+    "Organize & Clear Workspace"
+  ],
+  "PTS": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Maintain Safe, Steady Pace"
+  ],
+  "Home Delivery": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Using the proper technique for moving product",
+    "Correct Lane Organization & Prep"
+  ],
+  "HSW Loading": [
+    "Dock Door & Light Safety Check",
+    "Safe Driving & Speeds",
+    "Inspect Pallets for Grade A"
+  ],
+  "Processing": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ],
+  "HSW MC Store Picking": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ],
+  "HSW BP Store Picking": [
+    "Clean Area & Proper PPE",
+    "Safe Lifting Techniques",
+    "Focused on Task Without Distraction",
+    "Keep Area Clear of Hazards"
+  ]
+};
+
+      function renderDynamicChecklist(funcName) {
+          const container = document.getElementById('dynamic-checklist-area');
+          container.innerHTML = ''; // clear existing
+
+          let items = checklistData[funcName] ? [...checklistData[funcName]] : ["Proper PPE Usage", "Safe Lifting Techniques", "Keep Area Clear of Hazards"];
+
+          // Append the universally requested items
+          if (!items.includes("Delays in Production")) items.push("Delays in Production");
+          if (!items.includes("Follow SOP")) items.push("Follow SOP");
+
+          items.forEach((item, index) => {
+              const checkId = 'check-' + index;
+              const notesId = 'notes-' + index;
+
+              const html = `
+                <div class="dynamic-check-item" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333;" data-label="${item}">
+                        ${item}
+                    </label>
+                    <div style="position: relative;">
+                        <textarea id="${notesId}" class="dynamic-notes" placeholder="Notes for ${item}..." style="width: 100%; padding: 8px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 60px; font-family: inherit; font-size: 13px;"></textarea>
+                        <button type="button" onclick="startVoiceRecognition('${notesId}', this)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 18px; cursor: pointer;" title="Voice to Text">🎤</button>
+                    </div>
+                </div>
+              `;
+              container.insertAdjacentHTML('beforeend', html);
+          });
+      }
+
+      let timerInterval;
+      let seconds = 0;
+      let isTimerRunning = false;
+      let currentFunctionType = '';
+
+      // Tracking data
+      let trackingLogs = [];
+      let totalCount = 0;
+      let lastLogSeconds = 0;
+
+
+      // Initialization: Load leaders from server or check URL params
+      document.addEventListener('DOMContentLoaded', function() {
+        google.script.url.getLocation(function(location) {
+          if (location.parameters.coaching && location.parameters.coaching[0] === 'true') {
+            // WE ARE IN DIRECT EMAIL LINK MODE
+            document.getElementById('loading-area').style.display = 'none';
+            document.getElementById('coachingForm').style.display = 'block';
+
+
+            const obsId = location.parameters.id ? location.parameters.id[0] : '';
+            const assoc = location.parameters.associate ? location.parameters.associate[0] : '';
+            const note = location.parameters.note ? location.parameters.note[0] : '';
+            const topic = location.parameters.topic ? location.parameters.topic[0] : 'Safety';
+
+
+            document.getElementById('observationId').value = obsId;
+            document.getElementById('coachAssociateName').textContent = assoc;
+            document.getElementById('coachOriginalNote').textContent = note;
+
+
+            const container = document.getElementById('dynamicDropdownContainer');
+
+            if (topic === 'Productivity') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Productivity / Efficiency Observation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Productivity Observation...</option>
+                    <option value="Follow standard process.">1. Follow standard process. Stick to approved SOPs and use the correct tools.</option>
+                    <option value="Maintain pace and focus.">2. Maintain pace and focus. Stay on task to meet production targets.</option>
+                    <option value="Workspace organization (5S).">3. Workspace organization (5S). Keep your area clean to reduce wasted movement.</option>
+                    <option value="Communicate delays.">4. Communicate delays. Promptly report bottlenecks or equipment downtime.</option>
+                    <option value="Resource management.">5. Resource management. Complete required tracking and avoid wasting materials.</option>
+                  </select>
+                </div>
+              `;
+            } else if (topic === 'Quality') {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Quality / Standard Violation</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Quality Issue...</option>
+                    <option value="Care: Have care in what you do.">1. Care: Have care in what you do, execute with excellence.</option>
+                    <option value="Responsibility: It’s not just a box.">2. Responsibility: It’s not just a box, it’s a brand product that we deliver to our customers.</option>
+                    <option value="Attentiveness: Be attentive.">3. Attentiveness: Be attentive, follow symbols on packaging, and focus on inspiring QUALITY.</option>
+                    <option value="TeamWork: Ensure all teammates are following safety.">4. TeamWork: Ensure all teammates are following safety and team lift protocols.</option>
+                    <option value="Execute with Excellence: Take Ownership.">5. Execute with Excellence: Take Ownership, work with purpose, and be dedicated to the quality of your work.</option>
+                  </select>
+                </div>
+              `;
+            } else {
+              container.innerHTML = `
+                <div class="form-group">
+                  <label for="policyViolated">Policy / Safety Rule Violated</label>
+                  <select id="policyViolated" required>
+                    <option value="" disabled selected>Select Rule Violated...</option>
+                    <option value="Slow down. Be alert and aware of your surroundings.">1. Slow down. Be alert and aware of your surroundings.</option>
+                    <option value="Cut safely.">2. Cut safely. Ensure you are wearing safety gloves...</option>
+                    <option value="Wear personal protective equipment.">3. Wear personal protective equipment.</option>
+                    <option value="Use walkways.">4. Use walkways. Pedestrians must use designated walkways.</option>
+                    <option value="Lift smart.">5. Lift smart. Use proper lifting techniques...</option>
+                    <option value="Report incidents.">6. Report incidents. Incidents must be reported immediately.</option>
+                  </select>
+                </div>
+              `;
+            }
+          } else {
+             // STANDARD APP MODE: Load hierarchy
+            // Do not load hierarchy yet, wait for site selection
+
+            document.getElementById("loading-area").style.display = "none";
+
+            document.getElementById("landing-view").style.display = "block";
+
+
+
+
+
+
+
+
+
+          }
+        });
+      });
+
+
+
+
+      function populateGlobalLeaders() {
+        const globalLeaderSelect = document.getElementById('conv-leader');
+        const jsoLeaderSelect = document.getElementById('jso-leader');
+
+        globalLeaderSelect.innerHTML = "<option value=\"\" disabled selected>Select a Leader...</option>";
+
+        jsoLeaderSelect.innerHTML = "<option value=\"\" disabled selected>Select a Leader...</option>";
+        if (Object.keys(staffHierarchy).length === 0) {
+           showInitError("No staff data found in the Attendance Sheet.");
+           return;
+        }
+
+
+        const leaders = Object.keys(staffHierarchy).sort();
+        leaders.forEach(leader => {
+          const option1 = document.createElement('option');
+          option1.value = leader;
+          option1.textContent = leader;
+          globalLeaderSelect.appendChild(option1);
+
+
+          const option2 = document.createElement('option');
+          option2.value = leader;
+          option2.textContent = leader;
+          if(jsoLeaderSelect) jsoLeaderSelect.appendChild(option2);
+        });
+      }
+
+
+      function updateAssociates(leaderId, assocId) {
+        const leaderSelect = document.getElementById(leaderId);
+        const associateSelect = document.getElementById(assocId);
+        const selectedLeader = leaderSelect.value;
+
+        associateSelect.innerHTML = '<option value="" disabled selected>Select an Associate...</option>';
+
+        if (selectedLeader && staffHierarchy[selectedLeader]) {
+          const associates = staffHierarchy[selectedLeader];
+          associates.forEach(associate => {
+            const option = document.createElement('option');
+            option.value = associate;
+            option.textContent = associate;
+            associateSelect.appendChild(option);
+          });
+          associateSelect.disabled = false;
+        } else {
+          associateSelect.disabled = true;
+          associateSelect.innerHTML = '<option value="" disabled selected>First select a Leader</option>';
+        }
+      }
+
+
+      // Navigation Logic
+      function hideAllViews() {
+          document.getElementById('landing-view').style.display = 'none';
+          document.getElementById('jso-tracking-view').style.display = 'none';
+          document.getElementById('jso-notes-view').style.display = 'none';
+          document.getElementById('conversations-view').style.display = 'none';
+          document.getElementById('messageArea').style.display = 'none';
+      }
+
+
+      function selectPath(path) {
+          const site = document.getElementById("site-selection").value;
+          if (!site) {
+              alert("Please select your site first.");
+              return;
+          }
+
+          hideAllViews();
+          document.getElementById("loading-area").style.display = "block";
+
+          google.script.run
+            .withSuccessHandler(function(data) {
+               staffHierarchy = data;
+               document.getElementById("loading-area").style.display = "none";
+               populateGlobalLeaders();
+               document.getElementById(path + "-view").style.display = "block";
+            })
+            .withFailureHandler(function(error) {
+               showInitError(error);
+               document.getElementById("loading-area").style.display = "none";
+               document.getElementById("landing-view").style.display = "block";
+               document.getElementById("site-selection").value = "";
+            })
+            .getHierarchy(site);
+      }
+
+      function goBack(viewId) {
+          hideAllViews();
+          document.getElementById(viewId).style.display = 'block';
+      }
+
+
+      function goToJsoNotes() {
+          const func = document.getElementById('jso-function').value;
+          if (!func) {
+              const msg = document.getElementById('messageArea');
+              msg.textContent = "Please select a Function.";
+              msg.className = "message error";
+              msg.style.display = "block";
+              return;
+          }
+
+
+          stopTimer();
+          hideAllViews();
+          document.getElementById('jso-notes-view').style.display = 'block';
+          setTimeout(initSignature, 100); // init after display is block
+      }
+
+
+      // Timer & JSO Logic
+      function handleFunctionSelect() {
+        const select = document.getElementById('jso-function');
+        const selectedOpt = select.options[select.selectedIndex];
+
+        if (selectedOpt.value) {
+            const uph = selectedOpt.getAttribute('data-uph');
+            currentFunctionType = selectedOpt.getAttribute('data-type');
+
+            document.getElementById('uph-value').innerText = uph;
+            document.getElementById('uph-display').style.display = 'block';
+            document.getElementById('startTimerBtn').style.display = 'inline-block';
+            renderDynamicChecklist(selectedOpt.value);
+        }
+      }
+
+
+      function updateTimerDisplay() {
+          const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+          const secs = (seconds % 60).toString().padStart(2, '0');
+          document.getElementById('stopwatch').textContent = `${mins}:${secs}`;
+      }
+
+
+      function startTimer() {
+          const func = document.getElementById('jso-function').value;
+          if(!func) return;
+
+          isTimerRunning = true;
+          document.getElementById('startTimerBtn').style.display = 'none';
+          document.getElementById('stopTimerBtn').disabled = false;
+          document.getElementById('jso-function').disabled = true;
+
+          document.getElementById('action-logging-area').style.display = 'block';
+          if(currentFunctionType === 'pallet') {
+              document.getElementById('pallet-movement-area').style.display = 'block';
+              document.getElementById('piece-picking-area').style.display = 'none';
+          } else {
+              document.getElementById('pallet-movement-area').style.display = 'none';
+              document.getElementById('piece-picking-area').style.display = 'block';
+          }
+
+
+          timerInterval = setInterval(() => {
+              seconds++;
+              updateTimerDisplay();
+          }, 1000);
+      }
+
+
+      function formatTime(s) {
+          const mins = Math.floor(s / 60).toString().padStart(2, '0');
+          const secs = (s % 60).toString().padStart(2, '0');
+          return `${mins}:${secs}`;
+      }
+
+
+      function logPalletMovement() {
+          const startSeconds = lastLogSeconds;
+          const diffSeconds = seconds - lastLogSeconds;
+          lastLogSeconds = seconds;
+
+          totalCount++; trackingLogs.push({
+             type: 'Pallet Movement',
+             startTime: formatTime(startSeconds),
+             time: formatTime(seconds),
+             timeSinceLast: formatTime(diffSeconds),
+             durationSeconds: diffSeconds
+          });
+
+          document.getElementById('last-log-msg').textContent = `Logged movement at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
+      }
+
+
+      function logPiecesPicked() {
+          const piecesInput = document.getElementById('pieces-picked');
+          const count = parseInt(piecesInput.value, 10);
+
+          if(isNaN(count) || count <= 0) return;
+
+          const startSeconds = lastLogSeconds;
+          const diffSeconds = seconds - lastLogSeconds;
+          lastLogSeconds = seconds;
+
+          totalCount += count; trackingLogs.push({
+             type: 'Pieces Picked',
+             count: count,
+             startTime: formatTime(startSeconds),
+             time: formatTime(seconds),
+             timeSinceLast: formatTime(diffSeconds),
+             durationSeconds: diffSeconds
+          });
+
+          document.getElementById('last-log-msg').textContent = `Logged ${count} pieces at ${formatTime(seconds)} (${formatTime(diffSeconds)} since last log).`;
+          piecesInput.value = '';
+      }
+
+
+      function stopTimer() {
+          isTimerRunning = false;
+          document.getElementById('stopTimerBtn').disabled = true;
+          document.getElementById('action-logging-area').style.display = 'none';
+          clearInterval(timerInterval);
+      }
+
+
+      function showInitError(error) {
+        document.getElementById('loading-area').style.display = 'none';
+        const msg = document.getElementById('messageArea');
+        msg.textContent = "Error loading staff data: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+
+
+      // SUBMISSIONS
+
+
+      // 1. Conversations Form Submission
+      document.getElementById('jsoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('messageArea');
+
+        const topic = document.getElementById('topic').value;
+        const leader = document.getElementById('conv-leader').value;
+        const associate = document.getElementById('conv-assoc').value;
+        const typePositive = document.getElementById('type-positive').checked;
+        const notes = document.getElementById('notes').value;
+
+
+        const type = typePositive ? 'Positive' : 'Negative';
+
+
+        const data = {
+          topic: topic,
+          leader: leader,
+          associate: associate,
+          site: document.getElementById("site-selection").value,
+          type: type,
+          notes: notes
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+        msg.style.display = "none";
+
+
+        google.script.run
+          .withSuccessHandler(() => {
+              onSuccess('jsoForm', 'submitBtn', 'Observation successfully recorded!');
+          })
+          .withFailureHandler((err) => onError(err, 'submitBtn', 'Submit Observation'))
+          .submitObservation(data);
+      });
+
+
+      // 2. JSO PDF Form Submission
+      document.getElementById('jsoPdfForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitPdfBtn');
+        const msg = document.getElementById('messageArea');
+
+        const leader = document.getElementById('jso-leader').value;
+        const associate = document.getElementById('jso-associate').value;
+        const func = document.getElementById('jso-function').value;
+
+        let formattedLogs = trackingLogs.map(log => {
+            if(log.type === 'Pallet Movement') {
+                return `<li>Movement at ${log.time} (Time since last: ${log.timeSinceLast})</li>`;
+            } else {
+                return `<li>Picked ${log.count} pieces at ${log.time} (Time since last: ${log.timeSinceLast})</li>`;
+            }
+        }).join('');
+
+
+        if (trackingLogs.length === 0) formattedLogs = "<li>No activities logged.</li>";
+
+
+        const uphData = document.getElementById('uph-value').textContent;
+
+
+
+
+
+
+        const checklistResults = [];
+        document.querySelectorAll('.dynamic-check-item').forEach(item => {
+            const label = item.querySelector('label');
+            const noteArea = item.querySelector('.dynamic-notes');
+            if (label) {
+               checklistResults.push({
+                   check: label.getAttribute('data-label'),
+                   passed: true, // Assuming passed if not checked (since there's no checkbox)
+                   notes: noteArea.value
+               });
+            }
+
+
+        });
+
+        const fbPace = document.querySelector('input[name="fb-pace"]:checked')?.value || "N/A";
+        const fbSkills = document.querySelector('input[name="fb-skills"]:checked')?.value || "N/A";
+        const fbTraining = document.querySelector('input[name="fb-training"]:checked')?.value || "N/A";
+        const fbEnvironment = document.querySelector('input[name="fb-environment"]:checked')?.value || "N/A";
+        const fbNotes = document.getElementById('fb-notes').value || "None";
+        const signatureBase64 = typeof signatureEmpty !== 'undefined' && !signatureEmpty && typeof canvas !== 'undefined' && canvas ? canvas.toDataURL("image/png") : null;
+
+        // Generate a shared ID or timestamp client-side to ensure the links match exactly
+        const sharedTimestamp = new Date().toISOString();
+
+        const summaryRow = {
+            sharedTimestamp: sharedTimestamp, // new field to link
+            leader: leader,
+            associate: associate,
+            site: document.getElementById("site-selection").value,
+            duration: document.getElementById('stopwatch').textContent,
+            checklistResults: checklistResults,
+            function: func,
+            type: currentFunctionType,
+            totalCount: totalCount,
+            totalSeconds: seconds,
+            activityLogs: formattedLogs,
+            fbPace: fbPace,
+            fbSkills: fbSkills,
+            fbTraining: fbTraining,
+            fbEnvironment: fbEnvironment,
+            fbNotes: fbNotes,
+            signature: signatureBase64
+        };
+
+        const currentDate = new Date().toLocaleDateString();
+        const movementLogs = trackingLogs.map(log => ({
+            date: currentDate,
+            associate: associate,
+            site: document.getElementById("site-selection").value,
+            function: func,
+            sharedTimestamp: sharedTimestamp,
+            actionName: log.type,
+            startTime: log.startTime,
+            endTime: log.time,
+            durationSeconds: log.durationSeconds,
+            count: log.count || 1
+        }));
+
+        const data = {
+            summaryRow: summaryRow,
+            movementLogs: movementLogs
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+
+
+        google.script.run
+          .withSuccessHandler(() => {
+              onSuccess('jsoPdfForm', 'submitPdfBtn', 'JSO Report generated and emailed successfully!');
+          })
+          .withFailureHandler((err) => onError(err, 'submitPdfBtn', 'Submit & Send PDF'))
+          .processJSO(data); // <--- Using the new PDF function from earlier
+      });
+
+
+      // 3. Direct Link CCA / Coaching Submission
+      document.getElementById('ccaFormRecord').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitCoachBtn');
+        const msg = document.getElementById('messageArea');
+
+        const data = {
+          id: document.getElementById('observationId').value,
+          policy: document.getElementById('policyViolated').value,
+          perspective: document.getElementById('associatePerspective').value,
+          actionPlan: document.getElementById('actionPlan').value,
+          leaderNotes: document.getElementById('leaderNotes').value
+        };
+
+
+        btn.disabled = true;
+        btn.innerHTML = '<span id="loader"></span> Submitting...';
+
+
+        google.script.run
+          .withSuccessHandler(function() {
+             document.getElementById('coachingForm').reset();
+             document.getElementById('coachingForm').style.display = 'none';
+             msg.textContent = "Coaching record successfully saved! You may close this tab.";
+             msg.className = "message success";
+             msg.style.display = "block";
+          })
+          .withFailureHandler(function(error) {
+             btn.disabled = false;
+             btn.textContent = 'Submit Coaching Record';
+             msg.textContent = error.message || "An error occurred.";
+             msg.className = "message error";
+             msg.style.display = "block";
+          })
+          .submitCoaching(data);
+      });
+
+
+      // Utilities
+      function onSuccess(formId, btnId, successMsg) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+        document.getElementById(formId).reset();
+
+        btn.disabled = false;
+        btn.textContent = btnId === 'submitPdfBtn' ? 'Submit & Send PDF' : 'Submit Observation';
+
+        msg.textContent = successMsg;
+        msg.className = "message success";
+
+        // Reset tracking vars for JSO if applicable
+        if (formId === 'jsoPdfForm') {
+            trackingLogs = [];
+            totalCount = 0;
+            document.getElementById('uph-display').style.display = 'none';
+            document.getElementById('startTimerBtn').style.display = 'inline-block';
+            document.getElementById('stopTimerBtn').disabled = true;
+            document.getElementById('jso-function').disabled = false;
+            document.getElementById('action-logging-area').style.display = 'none';
+            document.getElementById('stopwatch').textContent = "00:00";
+            if (typeof clearSignature === "function") clearSignature();
+        }
+
+        // Route back to landing
+        goBack('landing-view');
+        msg.style.display = "block"; // Re-show since hideAllViews hides it
+
+        setTimeout(() => { msg.style.display = "none"; }, 4000);
+      }
+
+
+      function onError(error, btnId, defaultText) {
+        const btn = document.getElementById(btnId);
+        const msg = document.getElementById('messageArea');
+
+        btn.disabled = false;
+        btn.textContent = defaultText;
+
+        msg.textContent = "Error: " + error.message;
+        msg.className = "message error";
+        msg.style.display = "block";
+      }
+
+</script>
