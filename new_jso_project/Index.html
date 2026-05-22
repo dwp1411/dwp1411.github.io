@@ -33,7 +33,7 @@
 
             <label for="site-selection" style="text-align: center; display: block; font-weight: bold;">Select Site</label>
 
-            <select id="site-selection" name="site-selection" onchange="onSiteSelected()" style="max-width: 300px; margin: 0 auto; display: block;">
+            <select id="site-selection" name="site-selection" style="max-width: 300px; margin: 0 auto; display: block;">
 
               <option value="" disabled selected>Select your site...</option>
 
@@ -667,49 +667,7 @@
         });
       });
 
-      function onSiteSelected() {
 
-          const site = document.getElementById("site-selection").value;
-
-          if (!site) return;
-
-
-
-          document.getElementById("landing-view").style.display = "none";
-
-          document.getElementById("loading-area").style.display = "block";
-
-
-
-          google.script.run
-
-            .withSuccessHandler(function(data) {
-
-               staffHierarchy = data;
-
-               document.getElementById("loading-area").style.display = "none";
-
-               document.getElementById("landing-view").style.display = "block";
-
-               populateGlobalLeaders();
-
-            })
-
-            .withFailureHandler(function(error) {
-
-               showInitError(error);
-
-               document.getElementById("loading-area").style.display = "none";
-
-               document.getElementById("landing-view").style.display = "block";
-
-               document.getElementById("site-selection").value = "";
-
-            })
-
-            .getHierarchy(site);
-
-      }
 
 
       function populateGlobalLeaders() {
@@ -782,7 +740,22 @@
           }
 
           hideAllViews();
-          document.getElementById(path + "-view").style.display = "block";
+          document.getElementById("loading-area").style.display = "block";
+
+          google.script.run
+            .withSuccessHandler(function(data) {
+               staffHierarchy = data;
+               document.getElementById("loading-area").style.display = "none";
+               populateGlobalLeaders();
+               document.getElementById(path + "-view").style.display = "block";
+            })
+            .withFailureHandler(function(error) {
+               showInitError(error);
+               document.getElementById("loading-area").style.display = "none";
+               document.getElementById("landing-view").style.display = "block";
+               document.getElementById("site-selection").value = "";
+            })
+            .getHierarchy(site);
       }
 
       function goBack(viewId) {
