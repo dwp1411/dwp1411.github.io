@@ -9,6 +9,21 @@ const SITE_DATABASE_IDS = {
   "Dallas": "1GQuxziA__vnKkcmk7CYXkbPZiMi2sucd1QgB6Nt4lmg",
   "Newton": "1BKopOqOsEUF0N2QXjYtDlMnRZ6pifUDL3HZOh981SwA"
 };
+const SITE_DRIVE_FOLDERS = {
+
+  "Naperville": "1-EkEOqqqtERYdFVBwTo2D47ppEevCVKx",
+
+  "Tracy": "1czJoTTeSGBVihxZfOLCMnJXC4D81i2X1",
+
+  "Cranbury": "1DGtxqyNRjFGd6H07EaGRWV6wHLhX5_0u",
+
+  "Romeoville": "1xwZL6fRlVYB3Z2Ir4YF_v9Mxy_erjOgt",
+
+  "Dallas": "1EsHaUH2rVBBsgVCsEtsoGxtkLT8QQ9jm",
+
+  "Newton": "17P89LhcT3ukhy9dlVh4o1cKAi_7v1nwK"
+
+};
 const SITE_MANAGER_EMAILS = {
   "Naperville": "NapervilleDCManagers@crateandbarrel.com",
   "Tracy": "TracyDCManagers@crateandbarrel.com",
@@ -600,7 +615,8 @@ function processJSO(payload) {
 
     // Save PDF to Drive
     try {
-        const folder = DriveApp.getFolderById('1-EkEOqqqtERYdFVBwTo2D47ppEevCVKx');
+        const folderId = SITE_DRIVE_FOLDERS[data.site] || SITE_DRIVE_FOLDERS["Naperville"];
+        const folder = DriveApp.getFolderById(folderId);
         folder.createFile(blob);
     } catch(e) {
         Logger.log("Failed to save PDF to Drive: " + e.toString());
