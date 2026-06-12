@@ -254,6 +254,19 @@
     <button id="print-btn" onclick="window.print()"><i class="fas fa-file-pdf"></i> Download PDF</button>
 
     <script>
+        // Escape values that come from the spreadsheet before inserting them as
+        // HTML, so characters like " < > & display literally instead of being
+        // parsed as markup (prevents broken slides and HTML/script injection).
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function generateSlideshow() {
             var weekNum = document.getElementById('week-input').value;
             if(!weekNum) {
@@ -303,7 +316,7 @@
             var warningDisplay = '';
             if (response.warning) {
                 warningDisplay = `<div style="background-color: #ff823a; color: #fff; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;">
-                                    <i class="fas fa-exclamation-circle"></i> ${response.warning}
+                                    <i class="fas fa-exclamation-circle"></i> ${escapeHtml(response.warning)}
                                   </div>`;
             }
 
@@ -312,7 +325,7 @@
                 <div class="slide-container">
                     <div style="text-align: left; width: 100%;">
                         ${warningDisplay}
-                        <h1>Week ${weekNumber} <span>Operational Review</span></h1>
+                        <h1>Week ${escapeHtml(weekNumber)} <span>Operational Review</span></h1>
                         <p class="subtitle">Zone-by-Zone Audit Findings & Corrective Actions</p>
                     </div>
                 </div>
@@ -332,7 +345,7 @@
                     criticalItems.push({ zone: item.zone, notes: item.notes });
                 }
 
-                var ownerHtml = item.owner ? `<div class="zone-owner"><i class="fas fa-user"></i> ${item.owner}</div>` : '';
+                var ownerHtml = item.owner ? `<div class="zone-owner"><i class="fas fa-user"></i> ${escapeHtml(item.owner)}</div>` : '';
 
                 // Handle Image Grid layout
                 var imagesHtml = '';
@@ -343,7 +356,7 @@
                     imagesHtml = `
                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
                             <i class="fas fa-image" style="${isCritical ? 'color:#ff823a;' : ''}"></i>
-                            <div class="placeholder-text" style="${isCritical ? 'color:#ff823a;' : ''}">No images found for ${item.zone}</div>
+                            <div class="placeholder-text" style="${isCritical ? 'color:#ff823a;' : ''}">No images found for ${escapeHtml(item.zone)}</div>
                         </div>
                     `;
                 } else {
@@ -353,7 +366,7 @@
                     else if (numImages > 4) gridClass = 'grid-more';
 
                     item.images.forEach(function(imgUrl) {
-                        imagesHtml += `<img src="${imgUrl}" alt="${item.zone} image">`;
+                        imagesHtml += `<img src="${encodeURI(imgUrl)}" alt="${escapeHtml(item.zone)} image">`;
                     });
                 }
 
@@ -363,10 +376,10 @@
                         <div class="content-area">
                             <div class="zone-layout ${warningClass}">
                                 <div class="zone-info">
-                                    <h2>${item.zone} ${warningIcon}</h2>
-                                    <div class="score-badge">Score: ${item.score} / 5</div>
+                                    <h2>${escapeHtml(item.zone)} ${warningIcon}</h2>
+                                    <div class="score-badge">Score: ${escapeHtml(item.score)} / 5</div>
                                     <div class="notes">
-                                        "${item.notes}"
+                                        "${escapeHtml(item.notes)}"
                                         ${warningHtml}
                                     </div>
                                 </div>
@@ -391,7 +404,7 @@
                 `;
 
                 criticalItems.forEach(function(c) {
-                    summaryHtml += `<div class="summary-notes"><span class="summary-zone">${c.zone}:</span> ${c.notes}</div>`;
+                    summaryHtml += `<div class="summary-notes"><span class="summary-zone">${escapeHtml(c.zone)}:</span> ${escapeHtml(c.notes)}</div>`;
                 });
 
                 summaryHtml += `
