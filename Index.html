@@ -60,15 +60,6 @@
         #error-msg { color: #ff823a; margin-top: 20px; font-size: 18px; display: none; }
 
         /* SLIDESHOW CONTAINER */
-        #slideshow {
-            display: none;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 40px;
-        }
-
         .slide-container {
             align-items: flex-start;
             background-color: #000;
@@ -303,7 +294,11 @@
             var data = response.data;
             var weekNumber = response.weekNumber;
             var container = document.getElementById('slides-container');
-            container.innerHTML = ''; // clear previous
+
+            // Build all markup in a single buffer and assign innerHTML once.
+            // Appending with `innerHTML +=` per slide re-parses the whole
+            // container each time (O(n^2)) and re-downloads already-loaded images.
+            var slides = [];
 
             var warningDisplay = '';
             if (response.warning) {
@@ -313,7 +308,7 @@
             }
 
             // 1. Title Slide
-            container.innerHTML += `
+            slides.push(`
                 <div class="slide-container">
                     <div style="text-align: left; width: 100%;">
                         ${warningDisplay}
@@ -321,7 +316,7 @@
                         <p class="subtitle">Zone-by-Zone Audit Findings & Corrective Actions</p>
                     </div>
                 </div>
-            `;
+            `);
 
             var criticalItems = [];
 
@@ -382,7 +377,7 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += slideHtml;
+                slides.push(slideHtml);
             });
 
             // 3. Action Items / Summary Slide
@@ -404,7 +399,7 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += summaryHtml;
+                slides.push(summaryHtml);
             } else {
                 // If no critical items, show a positive summary
                  var summaryHtml = `
@@ -419,8 +414,11 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += summaryHtml;
+                slides.push(summaryHtml);
             }
+
+            // Assign the assembled markup in a single DOM write.
+            container.innerHTML = slides.join('');
 
             // Hide setup, show slides
             document.getElementById('setup-screen').style.display = 'none';

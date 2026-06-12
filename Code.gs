@@ -56,6 +56,16 @@ function getSlideshowData(weekNumber) {
   }
 
   if (foundWeekFolder) {
+    // Index zones by their number once, so folder lookup is O(1) instead of
+    // re-scanning every zone (and re-running the regex) for each subfolder.
+    var zonesByNumber = {};
+    for (var j = 0; j < zones.length; j++) {
+      var zoneMatch = zones[j].zone.toString().match(/\d+/);
+      if (zoneMatch) {
+        zonesByNumber[zoneMatch[0]] = zones[j];
+      }
+    }
+
     var subFoldersIter = foundWeekFolder.getFolders();
 
     while (subFoldersIter.hasNext()) {
@@ -67,17 +77,7 @@ function getSlideshowData(weekNumber) {
       var subfolderNum = subfolderMatch ? subfolderMatch[0] : null;
 
       if (subfolderNum) {
-        var matchedZone = null;
-        for (var j = 0; j < zones.length; j++) {
-          var zoneStr = zones[j].zone.toString();
-          var zoneMatch = zoneStr.match(/\d+/);
-          var zoneNum = zoneMatch ? zoneMatch[0] : null;
-
-          if (zoneNum === subfolderNum) {
-            matchedZone = zones[j];
-            break;
-          }
-        }
+        var matchedZone = zonesByNumber[subfolderNum] || null;
 
         if (matchedZone) {
           var filesIter = subFolder.getFiles();
